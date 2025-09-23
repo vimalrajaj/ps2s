@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Portal - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 900px;
+            min-height: 600px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            position: relative;
+            align-items: stretch;
+        }
+
+        .login-left {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 100%;
+        }
+
+        .login-left::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .university-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .university-logo i {
+            font-size: 2.5rem;
+            color: white;
+        }
+
+        .welcome-text h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .welcome-text p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            line-height: 1.6;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-right {
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100%;
+            overflow-y: auto;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-header h2 {
+            color: #1f2937;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .role-selector {
+            display: flex;
+            background: #f3f4f6;
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .role-option {
+            flex: 1;
+            text-align: center;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .role-option.active {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 5px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            padding-left: 50px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #fafafa;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 1.1rem;
+            margin-top: 12px;
+            pointer-events: none;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin-top: 12px;
+            transition: color 0.3s ease;
+            z-index: 10;
+        }
+
+        .password-toggle:hover {
+            color: #6366f1;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #374151;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #6366f1;
+        }
+
+        .forgot-password {
+            color: #6366f1;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .forgot-password:hover {
+            color: #4f46e5;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-left: 4px solid #dc2626;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .success-message {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #059669;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-left: 4px solid #059669;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .additional-links {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .additional-links a {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 500;
+            margin: 0 15px;
+            transition: color 0.3s ease;
+        }
+
+        .additional-links a:hover {
+            color: #4f46e5;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .login-container {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                min-height: auto;
+                align-items: stretch;
+            }
+
+            .login-left {
+                padding: 40px 30px;
+                min-height: 200px;
+            }
+
+            .login-right {
+                padding: 40px 30px;
+                min-height: auto;
+            }
+
+            .welcome-text h1 {
+                font-size: 2rem;
+            }
+
+            .login-header h2 {
+                font-size: 1.8rem;
+            }
+
+            .form-input {
+                padding: 12px 15px;
+                padding-left: 45px;
+                font-size: 0.95rem;
+            }
+
+            .form-icon {
+                left: 15px;
+                font-size: 1rem;
+            }
+
+            .password-toggle {
+                right: 15px;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                max-width: 100%;
+                border-radius: 15px;
+            }
+
+            .login-left, .login-right {
+                padding: 30px 25px;
+            }
+
+            .welcome-text h1 {
+                font-size: 1.8rem;
+            }
+
+            .login-header h2 {
+                font-size: 1.6rem;
+            }
+
+            .demo-credentials {
+                padding: 15px;
+            }
+
+            .demo-item {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Demo credentials display */
+        .demo-credentials {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 1px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .demo-credentials h4 {
+            color: #0369a1;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-list {
+            display: grid;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .demo-item {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .demo-item:hover {
+            background: white;
+            border-color: #0ea5e9;
+            transform: translateY(-1px);
+        }
+
+        .demo-item strong {
+            color: #0369a1;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Left Side - Welcome Section -->
+        <div class="login-left">
+            <div class="university-logo">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <div class="welcome-text">
+                <h1>Welcome Back</h1>
+                <p>Access your university portal to manage certificates, track academic progress, and stay connected with your educational journey.</p>
+            </div>
+        </div>
+
+        <!-- Right Side - Login Form -->
+        <div class="login-right">
+            <div class="login-header">
+                <h2>Sign In</h2>
+                <p>Choose your role and enter your credentials</p>
+            </div>
+
+            <!-- Role Selector -->
+            <div class="role-selector">
+                <div class="role-option active" data-role="student">
+                    <i class="fas fa-user-graduate"></i> Student
+                </div>
+                <div class="role-option" data-role="faculty">
+                    <i class="fas fa-chalkboard-teacher"></i> Faculty
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form class="login-form" id="loginForm">
+                <div class="error-message" id="errorMessage">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="errorText"></span>
+                </div>
+                
+                <div class="success-message" id="successMessage">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="successText"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="username" id="usernameLabel">Register Number</label>
+                    <div style="position: relative;">
+                        <i class="fas fa-user form-icon"></i>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            name="username" 
+                            class="form-input" 
+                            placeholder="Enter your register number"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div style="position: relative;">
+                        <i class="fas fa-lock form-icon"></i>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-input" 
+                            placeholder="Enter your password"
+                            required
+                        >
+                        <i class="fas fa-eye password-toggle" id="passwordToggle"></i>
+                    </div>
+                </div>
+
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="rememberMe" name="rememberMe">
+                        Remember me
+                    </label>
+                    <a href="#" class="forgot-password">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span class="btn-text">Sign In</span>
+                    <div class="btn-loading" id="btnLoading">
+                        <div class="spinner"></div>
+                        <span>Signing In...</span>
+                    </div>
+                </button>
+            </form>
+
+            <!-- Demo Credentials -->
+            <div class="demo-credentials">
+                <h4><i class="fas fa-info-circle"></i> Demo Login Credentials</h4>
+                <div class="demo-list" id="demoList">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="additional-links">
+                <a href="../certificate_verification/public/index.html">Certificate Verification</a>
+                <a href="#" onclick="showHelp()">Need Help?</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo credentials data
+        const demoCredentials = {
+            student: [
+                { username: '21CSE001', name: 'John Doe (CSE, 4th Year)' },
+                { username: '21CSE002', name: 'Jane Smith (CSE, 4th Year)' },
+                { username: '21ECE001', name: 'Alex Johnson (ECE, 4th Year)' },
+                { username: '22CSE001', name: 'Priya Patel (CSE, 3rd Year)' },
+                { username: '22IT001', name: 'Rahul Gupta (IT, 3rd Year)' }
+            ],
+            faculty: [
+                { username: 'rajesh.kumar', name: 'Dr. Rajesh Kumar (Professor & Head, CSE)' },
+                { username: 'priya.sharma', name: 'Dr. Priya Sharma (Associate Professor, ECE)' },
+                { username: 'amit.singh', name: 'Dr. Amit Singh (Assistant Professor, ME)' }
+            ]
+        };
+
+        // Global variables
+        let currentRole = 'student';
+        
+        // DOM Elements
+        const roleOptions = document.querySelectorAll('.role-option');
+        const usernameLabel = document.getElementById('usernameLabel');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('passwordToggle');
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = document.querySelector('.btn-text');
+        const btnLoading = document.getElementById('btnLoading');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const errorText = document.getElementById('errorText');
+        const successText = document.getElementById('successText');
+        const demoList = document.getElementById('demoList');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateRoleDisplay();
+            populateDemoCredentials();
+            
+            // Check if user is already logged in
+            checkExistingSession();
+        });
+
+        // Role selection
+        roleOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                roleOptions.forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                currentRole = this.dataset.role;
+                updateRoleDisplay();
+                populateDemoCredentials();
+                hideMessages();
+            });
+        });
+
+        // Update UI based on selected role
+        function updateRoleDisplay() {
+            if (currentRole === 'student') {
+                usernameLabel.textContent = 'Register Number';
+                usernameInput.placeholder = 'Enter your register number (e.g., 21CSE001)';
+            } else {
+                usernameLabel.textContent = 'Employee ID / Username';
+                usernameInput.placeholder = 'Enter your employee ID or username';
+            }
+        }
+
+        // Populate demo credentials
+        function populateDemoCredentials() {
+            const credentials = demoCredentials[currentRole];
+            demoList.innerHTML = credentials.map(cred => `
+                <div class="demo-item" onclick="fillCredentials('${cred.username}', '${currentRole}123')">
+                    <strong>${cred.username}</strong> - ${cred.name}
+                    <br><small>Password: ${currentRole}123</small>
+                </div>
+            `).join('');
+        }
+
+        // Fill credentials from demo
+        function fillCredentials(username, password) {
+            usernameInput.value = username;
+            passwordInput.value = password;
+            hideMessages();
+        }
+
+        // Password toggle
+        passwordToggle.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+
+        // Form submission
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            handleLogin();
+        });
+
+        // Login handler
+        async function handleLogin() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+
+            if (!username || !password) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            showLoading(true);
+            hideMessages();
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        userType: currentRole,
+                        rememberMe
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showSuccess('Login successful! Redirecting...');
+                    
+                    // Store user info in sessionStorage
+                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Redirect based on user type
+                    setTimeout(() => {
+                        if (data.user.userType === 'student') {
+                            window.location.href = '/student-dashboard';
+                        } else if (data.user.userType === 'faculty' || data.user.userType === 'admin') {
+                            window.location.href = '/faculty-dashboard';
+                        }
+                    }, 1500);
+                } else {
+                    showError(data.message || 'Login failed. Please check your credentials.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Network error. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Check for existing session
+        async function checkExistingSession() {
+            try {
+                const response = await fetch('/check-session');
+                const data = await response.json();
+                
+                if (data.authenticated) {
+                    showSuccess('Session found. Redirecting...');
+                    
+                    setTimeout(() => {
+                        if (data.user.userType === 'student') {
+                            window.location.href = '/student-dashboard';
+                        } else if (data.user.userType === 'faculty' || data.user.userType === 'admin') {
+                            window.location.href = '/faculty-dashboard';
+                        }
+                    }, 1000);
+                }
+            } catch (error) {
+                // No existing session, continue with login
+                console.log('No existing session found');
+            }
+        }
+
+        // UI Helper functions
+        function showLoading(show) {
+            if (show) {
+                btnText.style.display = 'none';
+                btnLoading.style.display = 'flex';
+                loginBtn.disabled = true;
+            } else {
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                loginBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.style.display = 'flex';
+            successMessage.style.display = 'none';
+            
+            // Auto hide after 5 seconds
+            setTimeout(hideMessages, 5000);
+        }
+
+        function showSuccess(message) {
+            successText.textContent = message;
+            successMessage.style.display = 'flex';
+            errorMessage.style.display = 'none';
+        }
+
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        // Help function
+        function showHelp() {
+            alert(`Login Help:
+
+For Students:
+- Use your register number as username (e.g., 21CSE001)
+- Default password is 'student123' for demo accounts
+- Contact your faculty if you forget your credentials
+
+For Faculty:
+- Use your employee ID or assigned username
+- Default password is 'faculty123' for demo accounts
+- Contact admin for password reset
+
+For Technical Support:
+- Email: support@university.edu
+- Phone: +91-9876543210
+
+Demo accounts are available for testing. Click on any demo credential to auto-fill the form.`);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Alt + S for Student role
+            if (e.altKey && e.key === 's') {
+                e.preventDefault();
+                document.querySelector('[data-role="student"]').click();
+            }
+            // Alt + F for Faculty role
+            if (e.altKey && e.key === 'f') {
+                e.preventDefault();
+                document.querySelector('[data-role="faculty"]').click();
+            }
+        });
+
+        // Auto-focus username field
+        usernameInput.focus();
+    </script>
+</body>
+</html>

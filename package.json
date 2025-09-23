@@ -1,0 +1,29 @@
+{
+  "name": "certificate-verification",
+  "version": "1.0.0",
+  "description": "Certificate verification and OCR URL extraction utility",
+  "main": "certificate_verification/server.js",
+  "scripts": {
+    "start": "node certificate_verification/server.js",
+    "test-url-extraction": "node certificate_verification/test_url_extraction.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "bcryptjs": "^3.0.2",
+    "cheerio": "^1.1.2",
+    "dotenv": "^17.2.2",
+    "express": "^4.21.2",
+    "express-mysql-session": "^3.0.3",
+    "express-session": "^1.18.2",
+    "jimp": "^0.22.12",
+    "multer": "^2.0.2",
+    "mysql2": "^3.15.0",
+    "mysql3": "^0.7.4",
+    "path": "^0.12.7",
+    "puppeteer": "^24.22.0",
+    "qrcode-reader": "^1.0.4",
+    "tesseract.js": "^6.0.1"
+  }
+}
