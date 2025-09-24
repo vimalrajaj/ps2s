@@ -1,46 +1,33 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 
-// Import database helper functions (these will be passed as dependencies)
-let getStudentDashboardData;
-
-// Initialize the route with dependencies
-function initStudentRoutes(dbHelpers, middlewares) {
-  getStudentDashboardData = dbHelpers.getStudentDashboardData;
-  
-  const { requireAuth, requireRole } = middlewares;
-
-  // Get student dashboard data
-  router.get('/api/student-data', requireAuth, requireRole(['student']), async (req, res) => {
+router.post('/students', async (req, res) => {
     try {
-      const studentData = await getStudentDashboardData(req.session.user.studentId);
-      
-      if (!studentData) {
-        return res.status(404).json({ message: 'Student data not found' });
-      }
+        const { register_number, first_name, last_name, email, department, password } = req.body;
 
-      res.json(studentData);
+        if (!register_number || !first_name || !last_name || !email || !department) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Required fields missing' 
+            });
+        }
+
+        const studentPassword = password || register_number;
+
+        await req.dbPool.execute(
+            'INSERT INTO students (register_number, first_name, last_name, email, department, password) VALUES (?, ?, ?, ?, ?, ?)',
+            [register_number, first_name, last_name, email, department, studentPassword]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Student created successfully'
+        });
+
     } catch (error) {
-      console.error('Error fetching student data:', error);
-      res.status(500).json({ message: 'Internal server error' });
+        console.error('Error creating student:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  });
+});
 
-  // Get user profile (available for both students and faculty)
-  router.get('/api/user-profile', requireAuth, async (req, res) => {
-    try {
-      const user = req.session.user;
-      res.json({
-        success: true,
-        user: user
-      });
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-  return router;
-}
-
-module.exports = initStudentRoutes;
+module.exports = router;

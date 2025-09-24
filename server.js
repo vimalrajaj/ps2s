@@ -9,18 +9,10 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const mysql = require('mysql2/promise');
-const bcrypt = require('bcryptjs');
 const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
 
 // Load environment variables
 require('dotenv').config();
-
-// Import route modules
-const initAuthRoutes = require('./routes/auth');
-const initStudentRoutes = require('./routes/student');
-const initFacultyRoutes = require('./routes/faculty');
-const initCertificateRoutes = require('./routes/certificate');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,14 +32,27 @@ const dbConfig = {
 // Create database connection pool
 const dbPool = mysql.createPool(dbConfig);
 
-// Simple session configuration without MySQL store for prototype
+// Basic database connection test
+async function testDatabaseConnection() {
+  try {
+    const connection = await dbPool.getConnection();
+    console.log('✅ Database connected successfully!');
+    connection.release();
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+  }
+}
+
+// Test database connection on startup
+testDatabaseConnection();
+
+// Session configuration
 app.use(session({
-  key: 'university_session',
-  secret: 'your_session_secret_key_change_this_in_production',
+  secret: 'university_session_secret_key',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 86400000, // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
     httpOnly: true,
     secure: false // Set to true in production with HTTPS
   }
@@ -59,172 +64,94 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files
+// Serve static files for different pages
 app.use('/login', express.static(path.join(__dirname, 'login')));
 app.use('/student-page', express.static(path.join(__dirname, 'student_page')));
 app.use('/faculty-page', express.static(path.join(__dirname, 'faculty_page')));
 app.use('/certificate-verification', express.static(path.join(__dirname, 'certificate_verification', 'public')));
+app.use('/university-portal', express.static(path.join(__dirname, 'university_portal')));
 
 // Serve static files for dashboard pages
 app.use('/student-dashboard', express.static(path.join(__dirname, 'student_page')));
 app.use('/faculty-dashboard', express.static(path.join(__dirname, 'faculty_page')));
+app.use('/admin-dashboard', express.static(path.join(__dirname, 'university_portal')));
 
 // Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Authentication middleware
-function requireAuth(req, res, next) {
-  if (req.session && req.session.user) {
-    return next();
-  } else {
-    console.log('Authentication failed for:', req.url);
-    return res.redirect('/login');
-  }
-}
-
-// Role-based middleware
-function requireRole(roles) {
-  return (req, res, next) => {
-    if (req.session && req.session.user && roles.includes(req.session.user.userType)) {
-      return next();
-    } else {
-      return res.status(403).json({ message: 'Access denied' });
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname);
     }
-  };
+});
+
+const upload = multer({ storage: storage });
+
+// Create uploads directory if it doesn't exist
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
 }
 
-// Database helper functions
-async function getUserByUsername(username) {
-  try {
-    const [rows] = await dbPool.execute(
-      'SELECT u.*, s.student_id, s.first_name as s_first_name, s.last_name as s_last_name, s.register_number, s.current_cgpa, s.profile_image as s_profile_image, f.faculty_id, f.first_name as f_first_name, f.last_name as f_last_name, f.employee_id, f.designation FROM users u LEFT JOIN students s ON u.user_id = s.user_id LEFT JOIN faculty f ON u.user_id = f.user_id WHERE u.username = ?',
-      [username]
-    );
-    return rows[0] || null;
-  } catch (error) {
-    console.error('Database error:', error);
-    return null;
-  }
-}
+// Redirect root to login page
+app.get('/', (req, res) => {
+    res.redirect('/login');
+});
 
-async function updateLastLogin(userId) {
-  try {
-    await dbPool.execute(
-      'UPDATE users SET last_login = NOW() WHERE user_id = ?',
-      [userId]
-    );
-  } catch (error) {
-    console.error('Error updating last login:', error);
-  }
-}
+// Import and use route modules
+const authRoutes = require('./routes/auth');
+const studentRoutes = require('./routes/student');
+const facultyRoutes = require('./routes/faculty');
 
-async function getStudentDashboardData(studentId) {
-  try {
-    const [studentData] = await dbPool.execute(`
-      SELECT s.*, c.course_name, d.dept_name, u.email, u.last_login,
-             COUNT(DISTINCT sc.cert_id) as total_certificates,
-             COUNT(DISTINCT CASE WHEN sc.verification_status = 'Verified' THEN sc.cert_id END) as verified_certificates,
-             AVG(CASE WHEN a.total_sessions > 0 THEN (a.attended_sessions / a.total_sessions * 100) END) as average_attendance
-      FROM students s
-      JOIN users u ON s.user_id = u.user_id
-      LEFT JOIN courses c ON s.course_id = c.course_id
-      LEFT JOIN departments d ON c.dept_id = d.dept_id
-      LEFT JOIN student_certificates sc ON s.student_id = sc.student_id
-      LEFT JOIN attendance a ON s.student_id = a.student_id
-      WHERE s.student_id = ?
-      GROUP BY s.student_id
-    `, [studentId]);
+// Use routes with database connection
+app.use('/', (req, res, next) => {
+    req.dbPool = dbPool;
+    next();
+}, authRoutes);
 
-    // Get recent certificates
-    const [certificates] = await dbPool.execute(`
-      SELECT * FROM student_certificates 
-      WHERE student_id = ? 
-      ORDER BY created_at DESC 
-      LIMIT 5
-    `, [studentId]);
+app.use('/api', (req, res, next) => {
+    req.dbPool = dbPool;
+    next();
+}, studentRoutes);
 
-    // Get recent notifications
-    const [notifications] = await dbPool.execute(`
-      SELECT * FROM notifications 
-      WHERE recipient_id = (SELECT user_id FROM students WHERE student_id = ?) 
-      ORDER BY created_at DESC 
-      LIMIT 10
-    `, [studentId]);
+app.use('/api', (req, res, next) => {
+    req.dbPool = dbPool;
+    next();
+}, facultyRoutes);
 
-    // Get current semester performance
-    const [performance] = await dbPool.execute(`
-      SELECT * FROM academic_performance 
-      WHERE student_id = ? AND semester = (SELECT semester FROM students WHERE student_id = ?)
-      ORDER BY subject_name
-    `, [studentId, studentId]);
+// TODO: Add your API routes here
+// Example:
+// app.post('/api/create-student', (req, res) => {
+//   // Your logic here
+// });
 
-    return {
-      student: studentData[0],
-      certificates,
-      notifications,
-      performance
-    };
-  } catch (error) {
-    console.error('Error getting student dashboard data:', error);
-    return null;
-  }
-}
-
-// Initialize routes with dependencies
-const dbHelpers = {
-  dbPool,
-  getUserByUsername,
-  updateLastLogin,
-  getStudentDashboardData
-};
-
-const middlewares = {
-  requireAuth,
-  requireRole
-};
-
-// Initialize and use route modules
-const authRoutes = initAuthRoutes(dbHelpers, middlewares);
-const studentRoutes = initStudentRoutes(dbHelpers, middlewares);
-const facultyRoutes = initFacultyRoutes(dbHelpers, middlewares);
-const certificateRoutes = initCertificateRoutes();
-
-// Use routes
-app.use('/', authRoutes);
-app.use('/', studentRoutes);
-app.use('/', facultyRoutes);
-app.use('/', certificateRoutes);
-
-// Check database connection
-(async function checkDatabaseConnection() {
-  try {
-    const connection = await dbPool.getConnection();
-    console.log('✅ Database connected successfully!');
-    connection.release();
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-  }
-})();
-
-// Error-handling middleware
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  
-  // Prevent server crash by always sending a response
-  if (!res.headersSent) {
+    console.error('Error occurred:', err);
     res.status(500).json({ 
-      status: 'Error', 
-      message: 'Internal Server Error',
-      details: 'An unexpected error occurred during certificate verification'
+        success: false, 
+        message: 'Internal server error',
+        error: err.message 
     });
-  }
-  
-  // Don't crash the server
-  console.log('Error handled gracefully, server continuing...');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log('Note: System supports both QR codes and text URL extraction via OCR.');
+// 404 handler for undefined routes
+app.use((req, res) => {
+    res.status(404).json({ 
+        success: false, 
+        message: 'Route not found' 
+    });
 });
+
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+    console.log('Note: System supports both QR codes and text URL extraction via OCR.');
+});
+
+// Export for testing
+module.exports = { app, dbPool };

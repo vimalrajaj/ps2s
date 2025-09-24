@@ -1,171 +1,183 @@
-const express = require('express');
+﻿const express = require('express');
 const path = require('path');
 const router = express.Router();
 
-// Import database helper functions (these will be passed as dependencies)
-let getUserByUsername, updateLastLogin;
-
-// Initialize the route with dependencies
-function initAuthRoutes(dbHelpers, middlewares) {
-  getUserByUsername = dbHelpers.getUserByUsername;
-  updateLastLogin = dbHelpers.updateLastLogin;
-  
-  const { requireAuth, requireRole } = middlewares;
-
-  // Home route - redirect to login
-  router.get('/', (req, res) => {
-    res.redirect('/login');
-  });
-
-  // Login page route
-  router.get('/login', (req, res) => {
-    // Always serve the login page and let client-side handle session checks
-    // This prevents server-side redirect loops
-    res.sendFile(path.join(__dirname, '..', 'login', 'index.html'));
-  });
-
-  // Authentication route
-  router.post('/login', async (req, res) => {
-    try {
-      const { username, password, userType, rememberMe } = req.body;
-
-      if (!username || !password || !userType) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Username, password, and user type are required' 
-        });
-      }
-
-      const user = await getUserByUsername(username);
-      
-      if (!user) {
-        return res.status(401).json({ 
-          success: false, 
-          message: 'Invalid username or password' 
-        });
-      }
-
-      // Check if user type matches
-      if (user.user_type !== userType) {
-        return res.status(401).json({ 
-          success: false, 
-          message: `Invalid credentials for ${userType} login` 
-        });
-      }
-
-      // Check account status - make this more flexible
-      if (user.status && user.status !== 'active') {
-        return res.status(401).json({ 
-          success: false, 
-          message: 'Account is inactive or suspended' 
-        });
-      }
-
-      // Verify password - simple text comparison for prototype
-      const passwordMatch = (password === user.password_hash);
-      
-      if (!passwordMatch) {
-        return res.status(401).json({ 
-          success: false, 
-          message: 'Invalid username or password' 
-        });
-      }
-
-      // Update last login
-      await updateLastLogin(user.user_id);
-
-      // Create session
-      const userData = {
-        userId: user.user_id,
-        username: user.username,
-        email: user.email,
-        userType: user.user_type,
-        firstName: user.s_first_name || user.f_first_name,
-        lastName: user.s_last_name || user.f_last_name,
-        profileImage: user.s_profile_image,
-        studentId: user.student_id,
-        facultyId: user.faculty_id,
-        registerNumber: user.register_number,
-        employeeId: user.employee_id,
-        cgpa: user.current_cgpa,
-        designation: user.designation
-      };
-
-      req.session.user = userData;
-      
-      console.log('Session created for user:', {
-        userId: userData.userId,
-        username: userData.username,
-        userType: userData.userType,
-        sessionId: req.sessionID
-      });
-
-      if (rememberMe) {
-        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-      }
-
-      // Determine redirect URL based on user type
-      const redirectUrl = userData.userType === 'student' ? '/student-dashboard' : '/faculty-dashboard';
-
-      // Explicitly save session before responding
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          return res.status(500).json({ success: false, message: 'Session save failed' });
-        }
-        
-        console.log('Session saved successfully, sending response');
-        res.json({
-          success: true,
-          message: 'Login successful',
-          user: userData,
-          redirectUrl: redirectUrl
-        });
-      });
-
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Internal server error' 
-      });
-    }
-  });
-
-  // Check session route
-  router.get('/check-session', (req, res) => {
+// Authentication middleware
+function requireAuth(req, res, next) {
     if (req.session && req.session.user) {
-      res.json({
-        authenticated: true,
-        user: req.session.user
-      });
+        return next();
     } else {
-      res.json({
-        authenticated: false
-      });
+        return res.redirect('/login');
     }
-  });
-
-  // Logout route
-  router.post('/logout', (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ success: false, message: 'Could not log out' });
-      }
-      res.json({ success: true, message: 'Logged out successfully' });
-    });
-  });
-
-  // Protected dashboard routes
-  router.get('/student-dashboard', requireAuth, requireRole(['student']), (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'student_page', 'index.html'));
-  });
-
-  router.get('/faculty-dashboard', requireAuth, requireRole(['faculty', 'admin']), (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'faculty_page', 'index.html'));
-  });
-
-  return router;
 }
 
-module.exports = initAuthRoutes;
+// Role-based middleware
+function requireRole(roles) {
+    return (req, res, next) => {
+        if (req.session && req.session.user && roles.includes(req.session.user.type)) {
+            return next();
+        } else {
+            return res.redirect('/login');
+        }
+    };
+}
+
+router.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'login', 'index.html'));
+});
+
+router.post('/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Username and password are required' 
+            });
+        }
+
+        // Check admin table for university login
+        const [adminResults] = await req.dbPool.execute(
+            'SELECT * FROM admin WHERE username = ? AND password = ?',
+            [username, password]
+        );
+
+        if (adminResults.length > 0) {
+            const user = adminResults[0];
+            
+            // Set session
+            req.session.user = {
+                id: user.id,
+                username: user.username,
+                type: 'university'
+            };
+            
+            return res.json({
+                success: true,
+                message: 'University admin login successful',
+                user: req.session.user,
+                redirectUrl: '/university-portal/'
+            });
+        }
+
+        // Check faculty table
+        const [facultyResults] = await req.dbPool.execute(
+            'SELECT * FROM faculty WHERE faculty_code = ? AND password = ? AND status = "active"',
+            [username, password]
+        );
+
+        if (facultyResults.length > 0) {
+            const faculty = facultyResults[0];
+            
+            // Set session
+            req.session.user = {
+                id: faculty.id,
+                username: faculty.faculty_code,
+                name: `${faculty.first_name} ${faculty.last_name}`,
+                type: 'faculty',
+                department: faculty.department,
+                designation: faculty.designation
+            };
+            
+            return res.json({
+                success: true,
+                message: 'Faculty login successful',
+                user: req.session.user,
+                redirectUrl: '/faculty-dashboard/'
+            });
+        }
+
+        // Check students table
+        const [studentResults] = await req.dbPool.execute(
+            'SELECT * FROM students WHERE register_number = ? AND password = ?',
+            [username, password]
+        );
+
+        if (studentResults.length > 0) {
+            const student = studentResults[0];
+            
+            // Set session
+            req.session.user = {
+                id: student.id,
+                username: student.register_number,
+                name: `${student.first_name} ${student.last_name}`,
+                type: 'student',
+                department: student.department,
+                semester: student.current_semester
+            };
+            
+            return res.json({
+                success: true,
+                message: 'Student login successful',
+                user: req.session.user,
+                redirectUrl: '/student-dashboard/'
+            });
+        }
+
+        // No match found in any table
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Invalid username or password' 
+        });
+
+    } catch (error) {
+        console.error('Login error:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+// Dashboard route handlers - serve appropriate pages after login with authentication
+router.get('/university-portal', requireAuth, requireRole(['university']), (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'university_portal', 'index.html'));
+});
+
+router.get('/faculty-dashboard', requireAuth, requireRole(['faculty']), (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'faculty_page', 'index.html'));
+});
+
+router.get('/student-dashboard', requireAuth, requireRole(['student']), (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'student_page', 'index.html'));
+});
+
+// Logout functionality
+router.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Could not log out' 
+            });
+        }
+        res.json({ 
+            success: true, 
+            message: 'Logged out successfully',
+            redirectUrl: '/login'
+        });
+    });
+});
+
+// Check session status
+router.get('/check-session', (req, res) => {
+    if (req.session && req.session.user) {
+        res.json({ 
+            authenticated: true,
+            user: req.session.user
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+// API route to get user profile
+router.get('/api/user-profile', requireAuth, (req, res) => {
+    res.json({
+        success: true,
+        user: req.session.user
+    });
+});
+
+module.exports = router;

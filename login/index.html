@@ -423,49 +423,6 @@
                 font-size: 0.8rem;
             }
         }
-
-        /* Demo credentials display */
-        .demo-credentials {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border: 1px solid #0ea5e9;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .demo-credentials h4 {
-            color: #0369a1;
-            margin-bottom: 15px;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .demo-list {
-            display: grid;
-            gap: 8px;
-            font-size: 0.85rem;
-        }
-
-        .demo-item {
-            background: rgba(255, 255, 255, 0.7);
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-        }
-
-        .demo-item:hover {
-            background: white;
-            border-color: #0ea5e9;
-            transform: translateY(-1px);
-        }
-
-        .demo-item strong {
-            color: #0369a1;
-        }
     </style>
 </head>
 <body>
@@ -495,6 +452,9 @@
                 </div>
                 <div class="role-option" data-role="faculty">
                     <i class="fas fa-chalkboard-teacher"></i> Faculty
+                </div>
+                <div class="role-option" data-role="university">
+                    <i class="fas fa-university"></i> University Admin
                 </div>
             </div>
 
@@ -558,14 +518,6 @@
                 </button>
             </form>
 
-            <!-- Demo Credentials -->
-            <div class="demo-credentials">
-                <h4><i class="fas fa-info-circle"></i> Demo Login Credentials</h4>
-                <div class="demo-list" id="demoList">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-            </div>
-
             <div class="additional-links">
                 <a href="../certificate_verification/public/index.html">Certificate Verification</a>
                 <a href="#" onclick="showHelp()">Need Help?</a>
@@ -574,22 +526,6 @@
     </div>
 
     <script>
-        // Demo credentials data
-        const demoCredentials = {
-            student: [
-                { username: '21CSE001', name: 'John Doe (CSE, 4th Year)' },
-                { username: '21CSE002', name: 'Jane Smith (CSE, 4th Year)' },
-                { username: '21ECE001', name: 'Alex Johnson (ECE, 4th Year)' },
-                { username: '22CSE001', name: 'Priya Patel (CSE, 3rd Year)' },
-                { username: '22IT001', name: 'Rahul Gupta (IT, 3rd Year)' }
-            ],
-            faculty: [
-                { username: 'rajesh.kumar', name: 'Dr. Rajesh Kumar (Professor & Head, CSE)' },
-                { username: 'priya.sharma', name: 'Dr. Priya Sharma (Associate Professor, ECE)' },
-                { username: 'amit.singh', name: 'Dr. Amit Singh (Assistant Professor, ME)' }
-            ]
-        };
-
         // Global variables
         let currentRole = 'student';
         
@@ -612,7 +548,6 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             updateRoleDisplay();
-            populateDemoCredentials();
             
             // Check if user is already logged in
             checkExistingSession();
@@ -625,7 +560,6 @@
                 this.classList.add('active');
                 currentRole = this.dataset.role;
                 updateRoleDisplay();
-                populateDemoCredentials();
                 hideMessages();
             });
         });
@@ -639,24 +573,6 @@
                 usernameLabel.textContent = 'Employee ID / Username';
                 usernameInput.placeholder = 'Enter your employee ID or username';
             }
-        }
-
-        // Populate demo credentials
-        function populateDemoCredentials() {
-            const credentials = demoCredentials[currentRole];
-            demoList.innerHTML = credentials.map(cred => `
-                <div class="demo-item" onclick="fillCredentials('${cred.username}', '${currentRole}123')">
-                    <strong>${cred.username}</strong> - ${cred.name}
-                    <br><small>Password: ${currentRole}123</small>
-                </div>
-            `).join('');
-        }
-
-        // Fill credentials from demo
-        function fillCredentials(username, password) {
-            usernameInput.value = username;
-            passwordInput.value = password;
-            hideMessages();
         }
 
         // Password toggle
@@ -695,26 +611,31 @@
                     },
                     body: JSON.stringify({
                         username,
-                        password,
-                        userType: currentRole,
-                        rememberMe
+                        password
                     })
                 });
 
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    showSuccess('Login successful! Redirecting...');
+                    showSuccess(data.message + ' Redirecting...');
                     
                     // Store user info in sessionStorage
                     sessionStorage.setItem('user', JSON.stringify(data.user));
                     
-                    // Redirect based on user type
+                    // Redirect based on backend response
                     setTimeout(() => {
-                        if (data.user.userType === 'student') {
-                            window.location.href = '/student-dashboard';
-                        } else if (data.user.userType === 'faculty' || data.user.userType === 'admin') {
-                            window.location.href = '/faculty-dashboard';
+                        if (data.redirectUrl) {
+                            window.location.href = data.redirectUrl;
+                        } else {
+                            // Fallback redirection based on user type
+                            if (data.user.type === 'student') {
+                                window.location.href = '/student-dashboard';
+                            } else if (data.user.type === 'faculty') {
+                                window.location.href = '/faculty-dashboard';
+                            } else if (data.user.type === 'university') {
+                                window.location.href = '/university-portal';
+                            }
                         }
                     }, 1500);
                 } else {
@@ -738,10 +659,12 @@
                     showSuccess('Session found. Redirecting...');
                     
                     setTimeout(() => {
-                        if (data.user.userType === 'student') {
+                        if (data.user.type === 'student') {
                             window.location.href = '/student-dashboard';
-                        } else if (data.user.userType === 'faculty' || data.user.userType === 'admin') {
+                        } else if (data.user.type === 'faculty') {
                             window.location.href = '/faculty-dashboard';
+                        } else if (data.user.type === 'university') {
+                            window.location.href = '/university-portal';
                         }
                     }, 1000);
                 }

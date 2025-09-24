@@ -2,9 +2,9 @@
   "name": "certificate-verification",
   "version": "1.0.0",
   "description": "Certificate verification and OCR URL extraction utility",
-  "main": "certificate_verification/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node certificate_verification/server.js",
+    "start": "node server.js",
     "test-url-extraction": "node certificate_verification/test_url_extraction.js"
   },
   "author": "",

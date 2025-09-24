@@ -63,19 +63,11 @@ function setupEventListeners() {
         certificateSearch.addEventListener('input', filterCertificates);
     }
 
-    // Form submission
-    const createStudentForm = document.getElementById('createStudentForm');
-    if (createStudentForm) {
-        createStudentForm.addEventListener('submit', handleCreateStudent);
-    }
-
     // Filters
-    const courseFilter = document.getElementById('courseFilter');
-    const batchFilter = document.getElementById('batchFilter');
+    const classFilter = document.getElementById('classFilter');
     const statusFilter = document.getElementById('statusFilter');
 
-    if (courseFilter) courseFilter.addEventListener('change', filterStudents);
-    if (batchFilter) batchFilter.addEventListener('change', filterStudents);
+    if (classFilter) classFilter.addEventListener('change', filterStudents);
     if (statusFilter) statusFilter.addEventListener('change', filterCertificates);
 }
 
@@ -110,13 +102,13 @@ function loadSectionData(sectionId) {
             loadDashboardData();
             break;
         case 'students':
-            loadStudentsData();
+            loadMyStudents();
+            break;
+        case 'courses':
+            loadMyCourses();
             break;
         case 'certificates':
             loadCertificatesData();
-            break;
-        case 'create-student':
-            populateCreateStudentForm();
             break;
         case 'reports':
             loadReportsData();
@@ -127,8 +119,6 @@ function loadSectionData(sectionId) {
 // Load dashboard data
 async function loadDashboardData() {
     try {
-        showLoading(true);
-        
         // Load summary statistics
         const [statsResponse, activitiesResponse] = await Promise.all([
             fetch('/api/faculty/dashboard-stats'),
@@ -145,11 +135,153 @@ async function loadDashboardData() {
             updateRecentActivities(activities);
         }
         
+        // Load initial data for all sections
+        await Promise.all([
+            loadMyStudents(),
+            loadMyCourses(),
+            loadCertificatesData()
+        ]);
+        
     } catch (error) {
         console.error('Error loading dashboard data:', error);
         showNotification('Error loading dashboard data', 'error');
-    } finally {
-        showLoading(false);
+    }
+}
+
+// Load faculty's students
+async function loadMyStudents() {
+    try {
+        const response = await fetch('/api/faculty/my-students');
+        if (response.ok) {
+            const students = await response.json();
+            studentsData = students;
+            updateStudentsTable(students);
+            updateClassFilter(students);
+        }
+    } catch (error) {
+        console.error('Error loading students:', error);
+    }
+}
+
+// Load faculty's courses/classes
+async function loadMyCourses() {
+    try {
+        const response = await fetch('/api/faculty/my-classes');
+        if (response.ok) {
+            const courses = await response.json();
+            coursesData = courses;
+            updateCoursesTable(courses);
+            updateCourseStats(courses);
+        }
+    } catch (error) {
+        console.error('Error loading courses:', error);
+    }
+}
+
+// Update course statistics in dashboard
+function updateCourseStats(courses) {
+    const totalClasses = courses.length;
+    const totalStudents = courses.reduce((sum, course) => sum + (course.current_students || 0), 0);
+    const uniqueCourses = new Set(courses.map(c => c.course_id)).size;
+    
+    // Update dashboard stats
+    const totalClassesEl = document.getElementById('totalClasses');
+    const totalStudentsInClassesEl = document.getElementById('totalStudentsInClasses');
+    const totalCoursesEl = document.getElementById('totalCourses');
+    
+    if (totalClassesEl) totalClassesEl.textContent = totalClasses;
+    if (totalStudentsInClassesEl) totalStudentsInClassesEl.textContent = totalStudents;
+    if (totalCoursesEl) totalCoursesEl.textContent = uniqueCourses;
+}
+
+// Update courses table
+function updateCoursesTable(courses) {
+    const tbody = document.getElementById('coursesTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = courses.map(course => `
+        <tr>
+            <td><strong>${course.class_name}</strong></td>
+            <td>${course.course_name}</td>
+            <td>${course.dept_name || 'N/A'}</td>
+            <td>${course.current_students}/${course.max_students}</td>
+            <td>${course.year_name}</td>
+            <td>Semester ${course.current_semester}</td>
+            <td>
+                <button class="btn" style="background: #e5e7eb; color: #374151; padding: 5px 10px;" 
+                        onclick="viewClassDetails(${course.class_id})">
+                    <i class="fas fa-eye"></i> View Students
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Update class filter dropdown
+function updateClassFilter(students) {
+    const classFilter = document.getElementById('classFilter');
+    if (classFilter && students.length > 0) {
+        const uniqueClasses = [...new Set(students.map(s => ({ id: s.class_id, name: s.class_name })))];
+        classFilter.innerHTML = '<option value="">All Classes</option>' +
+            uniqueClasses.map(cls => `<option value="${cls.id}">${cls.name}</option>`).join('');
+    }
+}
+
+// Update students table with faculty's students
+function updateStudentsTable(students) {
+    const tbody = document.getElementById('studentsTable');
+    if (!tbody) return;
+
+    if (!students || students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #6b7280;">No students assigned to your classes</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = students.map(student => `
+        <tr>
+            <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 35px; height: 35px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-user" style="color: #6b7280;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600;">${student.first_name} ${student.last_name}</div>
+                        <div style="font-size: 0.85rem; color: #6b7280;">${student.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td><strong>${student.register_number}</strong></td>
+            <td>${student.class_name}</td>
+            <td>${student.course_name}</td>
+            <td>
+                <span style="font-weight: 600; color: ${student.current_cgpa >= 8.5 ? '#059669' : student.current_cgpa >= 7.0 ? '#f59e0b' : '#dc2626'};">
+                    ${student.current_cgpa ? student.current_cgpa.toFixed(2) : 'N/A'}
+                </span>
+            </td>
+            <td>
+                <span class="status-badge status-${student.enrollment_status.toLowerCase()}">
+                    ${student.enrollment_status}
+                </span>
+            </td>
+            <td>
+                <button class="btn" style="background: #e5e7eb; color: #374151; padding: 5px 10px;" 
+                        onclick="viewStudentDetails(${student.student_id})">
+                    <i class="fas fa-eye"></i> View
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// View class details function
+function viewClassDetails(classId) {
+    // Filter students by class
+    const classStudents = studentsData.filter(s => s.class_id == classId);
+    if (classStudents.length > 0) {
+        showStudentModal({
+            title: `Students in ${classStudents[0].class_name}`,
+            students: classStudents
+        });
     }
 }
 
@@ -200,288 +332,14 @@ function updateRecentActivities(activities) {
     `).join('');
 }
 
-// Load students data
-async function loadStudentsData() {
-    try {
-        showLoading(true);
-        
-        const response = await fetch('/api/faculty/students');
-        if (response.ok) {
-            studentsData = await response.json();
-            populateStudentsTable(studentsData);
-            populateFilters();
-        } else {
-            throw new Error('Failed to load students data');
-        }
-        
-    } catch (error) {
-        console.error('Error loading students data:', error);
-        showNotification('Error loading students data', 'error');
-    } finally {
-        showLoading(false);
-    }
-}
-
-// Populate students table
-function populateStudentsTable(students) {
-    const tbody = document.getElementById('studentsTable');
-    
-    if (!students || students.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #6b7280;">No students found</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = students.map(student => `
-        <tr>
-            <td>
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center;">
-                    ${student.profile_image ? 
-                        `<img src="${student.profile_image}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
-                        `<i class="fas fa-user" style="color: #6b7280;"></i>`
-                    }
-                </div>
-            </td>
-            <td>
-                <div style="font-weight: 600;">${student.first_name} ${student.last_name}</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">${student.email}</div>
-            </td>
-            <td>${student.register_number}</td>
-            <td>${student.course_name || 'N/A'}</td>
-            <td>${student.batch_year}</td>
-            <td>
-                <span style="font-weight: 600; color: ${student.current_cgpa >= 8.5 ? '#059669' : student.current_cgpa >= 7.0 ? '#f59e0b' : '#dc2626'};">
-                    ${student.current_cgpa.toFixed(2)}
-                </span>
-            </td>
-            <td>
-                <span class="status-badge status-${student.enrollment_status.toLowerCase()}">
-                    ${student.enrollment_status}
-                </span>
-            </td>
-            <td>
-                <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #6366f1; color: white;" onclick="viewStudent(${student.student_id})">
-                    <i class="fas fa-eye"></i> View
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Filter students
-function filterStudents() {
-    const searchTerm = document.getElementById('studentSearch').value.toLowerCase();
-    const courseFilter = document.getElementById('courseFilter').value;
-    const batchFilter = document.getElementById('batchFilter').value;
-    
-    let filteredStudents = studentsData.filter(student => {
-        const matchesSearch = !searchTerm || 
-            student.first_name.toLowerCase().includes(searchTerm) ||
-            student.last_name.toLowerCase().includes(searchTerm) ||
-            student.register_number.toLowerCase().includes(searchTerm) ||
-            student.email.toLowerCase().includes(searchTerm);
-            
-        const matchesCourse = !courseFilter || student.course_id == courseFilter;
-        const matchesBatch = !batchFilter || student.batch_year == batchFilter;
-        
-        return matchesSearch && matchesCourse && matchesBatch;
-    });
-    
-    populateStudentsTable(filteredStudents);
-}
-
-// Load certificates data
-async function loadCertificatesData() {
-    try {
-        showLoading(true);
-        
-        const response = await fetch('/api/faculty/certificates');
-        if (response.ok) {
-            certificatesData = await response.json();
-            populateCertificatesTable(certificatesData);
-        } else {
-            throw new Error('Failed to load certificates data');
-        }
-        
-    } catch (error) {
-        console.error('Error loading certificates data:', error);
-        showNotification('Error loading certificates data', 'error');
-    } finally {
-        showLoading(false);
-    }
-}
-
-// Populate certificates table
-function populateCertificatesTable(certificates) {
-    const tbody = document.getElementById('certificatesTable');
-    
-    if (!certificates || certificates.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6b7280;">No certificates found</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = certificates.map(cert => `
-        <tr>
-            <td>
-                <div style="font-weight: 600;">${cert.student_name}</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">${cert.register_number}</div>
-            </td>
-            <td>
-                <div style="font-weight: 600;">${cert.certificate_name}</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">${cert.certificate_type}</div>
-            </td>
-            <td>${cert.issuing_organization}</td>
-            <td>${formatDate(cert.issue_date)}</td>
-            <td>
-                <span class="status-badge status-${cert.verification_status.toLowerCase()}">
-                    ${cert.verification_status}
-                </span>
-            </td>
-            <td>
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn" style="padding: 5px 8px; font-size: 0.75rem; background: #6366f1; color: white;" onclick="viewCertificate(${cert.cert_id})">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${cert.verification_status === 'Pending' ? 
-                        `<button class="btn" style="padding: 5px 8px; font-size: 0.75rem; background: #059669; color: white;" onclick="verifyCertificate(${cert.cert_id})">
-                            <i class="fas fa-check"></i>
-                        </button>` : ''
-                    }
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Filter certificates
-function filterCertificates() {
-    const searchTerm = document.getElementById('certificateSearch').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-    
-    let filteredCertificates = certificatesData.filter(cert => {
-        const matchesSearch = !searchTerm || 
-            cert.certificate_name.toLowerCase().includes(searchTerm) ||
-            cert.student_name.toLowerCase().includes(searchTerm) ||
-            cert.issuing_organization.toLowerCase().includes(searchTerm);
-            
-        const matchesStatus = !statusFilter || cert.verification_status === statusFilter;
-        
-        return matchesSearch && matchesStatus;
-    });
-    
-    populateCertificatesTable(filteredCertificates);
-}
-
-// Populate create student form
-async function populateCreateStudentForm() {
-    try {
-        // Load courses for dropdown
-        const response = await fetch('/api/faculty/courses');
-        if (response.ok) {
-            coursesData = await response.json();
-            populateCoursesDropdown();
-        }
-        
-        populateBatchYearDropdown();
-        
-    } catch (error) {
-        console.error('Error loading form data:', error);
-    }
-}
-
-// Populate courses dropdown
-function populateCoursesDropdown() {
-    const courseSelect = document.getElementById('course');
-    if (courseSelect && coursesData) {
-        courseSelect.innerHTML = '<option value="">Select Course</option>' +
-            coursesData.map(course => 
-                `<option value="${course.course_id}">${course.course_name}</option>`
-            ).join('');
-    }
-}
-
-// Populate batch year dropdown
-function populateBatchYearDropdown() {
-    const batchSelect = document.getElementById('batchYear');
-    if (batchSelect) {
-        const currentYear = new Date().getFullYear();
-        const years = [];
-        for (let i = currentYear - 4; i <= currentYear + 1; i++) {
-            years.push(i);
-        }
-        
-        batchSelect.innerHTML = '<option value="">Select Batch Year</option>' +
-            years.map(year => `<option value="${year}">${year}</option>`).join('');
-    }
-}
-
-// Populate filters
-function populateFilters() {
-    // Course filter
-    const courseFilter = document.getElementById('courseFilter');
-    if (courseFilter && coursesData) {
-        courseFilter.innerHTML = '<option value="">All Courses</option>' +
-            coursesData.map(course => 
-                `<option value="${course.course_id}">${course.course_name}</option>`
-            ).join('');
-    }
-    
-    // Batch filter
-    const batchFilter = document.getElementById('batchFilter');
-    if (batchFilter && studentsData) {
-        const uniqueBatches = [...new Set(studentsData.map(s => s.batch_year))].sort();
-        batchFilter.innerHTML = '<option value="">All Batches</option>' +
-            uniqueBatches.map(batch => `<option value="${batch}">${batch}</option>`).join('');
-    }
-}
-
-// Handle create student form submission
-async function handleCreateStudent(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const studentData = Object.fromEntries(formData.entries());
-    
-    try {
-        showLoading(true);
-        
-        const response = await fetch('/api/faculty/create-student', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(studentData)
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            showNotification('Student account created successfully!', 'success');
-            resetCreateForm();
-            // Refresh students data if we're on the students page
-            if (document.getElementById('students').classList.contains('active')) {
-                loadStudentsData();
-            }
-        } else {
-            showNotification(result.message || 'Error creating student account', 'error');
-        }
-        
-    } catch (error) {
-        console.error('Error creating student:', error);
-        showNotification('Error creating student account', 'error');
-    } finally {
-        showLoading(false);
-    }
-}
-
 // View student details
-async function viewStudent(studentId) {
+async function viewStudentDetails(studentId) {
     try {
-        const response = await fetch(`/api/faculty/student/${studentId}`);
-        if (response.ok) {
-            const student = await response.json();
+        const student = studentsData.find(s => s.student_id == studentId);
+        if (student) {
             showStudentModal(student);
         } else {
-            showNotification('Error loading student details', 'error');
+            showNotification('Student not found', 'error');
         }
     } catch (error) {
         console.error('Error viewing student:', error);
@@ -495,50 +353,111 @@ function showStudentModal(student) {
     const content = document.getElementById('studentModalContent');
     
     content.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div>
-                <h4 style="margin-bottom: 1rem; color: #1f2937;">Personal Information</h4>
-                <div style="display: grid; gap: 0.5rem;">
-                    <div><strong>Name:</strong> ${student.first_name} ${student.last_name}</div>
-                    <div><strong>Register Number:</strong> ${student.register_number}</div>
-                    <div><strong>Email:</strong> ${student.email}</div>
-                    <div><strong>Phone:</strong> ${student.phone || 'N/A'}</div>
-                    <div><strong>Date of Birth:</strong> ${formatDate(student.date_of_birth)}</div>
-                    <div><strong>Gender:</strong> ${student.gender}</div>
+        <div class="student-details">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-user" style="color: #6b7280; font-size: 1.5rem;"></i>
+                </div>
+                <div>
+                    <h4>${student.first_name} ${student.last_name}</h4>
+                    <p style="color: #6b7280; margin: 0;">${student.email}</p>
                 </div>
             </div>
-            <div>
-                <h4 style="margin-bottom: 1rem; color: #1f2937;">Academic Information</h4>
-                <div style="display: grid; gap: 0.5rem;">
-                    <div><strong>Course:</strong> ${student.course_name}</div>
-                    <div><strong>Department:</strong> ${student.dept_name}</div>
-                    <div><strong>Batch Year:</strong> ${student.batch_year}</div>
-                    <div><strong>Current Semester:</strong> ${student.semester}</div>
-                    <div><strong>CGPA:</strong> ${student.current_cgpa.toFixed(2)}</div>
-                    <div><strong>Status:</strong> ${student.enrollment_status}</div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <label style="font-weight: 600; color: #374151;">Register Number:</label>
+                    <p>${student.register_number}</p>
                 </div>
-            </div>
-        </div>
-        <div style="margin-top: 1.5rem;">
-            <h4 style="margin-bottom: 1rem; color: #1f2937;">Statistics</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-                <div style="text-align: center; padding: 1rem; background: #f3f4f6; border-radius: 8px;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1;">${student.total_certificates || 0}</div>
-                    <div style="font-size: 0.9rem; color: #6b7280;">Certificates</div>
+                <div>
+                    <label style="font-weight: 600; color: #374151;">Class:</label>
+                    <p>${student.class_name || 'N/A'}</p>
                 </div>
-                <div style="text-align: center; padding: 1rem; background: #f3f4f6; border-radius: 8px;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #059669;">${student.verified_certificates || 0}</div>
-                    <div style="font-size: 0.9rem; color: #6b7280;">Verified</div>
+                <div>
+                    <label style="font-weight: 600; color: #374151;">Course:</label>
+                    <p>${student.course_name || 'N/A'}</p>
                 </div>
-                <div style="text-align: center; padding: 1rem; background: #f3f4f6; border-radius: 8px;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;">${(student.average_attendance || 0).toFixed(1)}%</div>
-                    <div style="font-size: 0.9rem; color: #6b7280;">Attendance</div>
+                <div>
+                    <label style="font-weight: 600; color: #374151;">Department:</label>
+                    <p>${student.dept_name || 'N/A'}</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #374151;">CGPA:</label>
+                    <p style="font-weight: 600; color: ${student.current_cgpa >= 8.5 ? '#059669' : student.current_cgpa >= 7.0 ? '#f59e0b' : '#dc2626'};">
+                        ${student.current_cgpa ? student.current_cgpa.toFixed(2) : 'N/A'}
+                    </p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #374151;">Certificates:</label>
+                    <p>${student.total_certificates || 0}</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #374151;">Status:</label>
+                    <p>
+                        <span class="status-badge status-${student.enrollment_status.toLowerCase()}">
+                            ${student.enrollment_status}
+                        </span>
+                    </p>
                 </div>
             </div>
         </div>
     `;
     
-    modal.classList.add('active');
+    modal.style.display = 'flex';
+}
+
+// Close modal function
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Load certificates data
+async function loadCertificatesData() {
+    try {
+        const response = await fetch('/api/faculty/certificates');
+        if (response.ok) {
+            certificatesData = await response.json();
+            updateCertificatesTable(certificatesData);
+        }
+    } catch (error) {
+        console.error('Error loading certificates:', error);
+    }
+}
+
+// Update certificates table
+function updateCertificatesTable(certificates) {
+    const tbody = document.getElementById('certificatesTable');
+    if (!tbody) return;
+
+    if (!certificates || certificates.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6b7280;">No certificates found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = certificates.map(cert => `
+        <tr>
+            <td>${cert.student_name}</td>
+            <td>${cert.certificate_name}</td>
+            <td>${cert.issuing_organization}</td>
+            <td>${formatDate(cert.issue_date)}</td>
+            <td>
+                <span class="status-badge status-${cert.verification_status.toLowerCase()}">
+                    ${cert.verification_status}
+                </span>
+            </td>
+            <td>
+                ${cert.verification_status === 'Pending' ? 
+                    `<button class="btn btn-primary" onclick="verifyCertificate(${cert.cert_id})">
+                        <i class="fas fa-check"></i> Verify
+                    </button>` : 
+                    '<span style="color: #6b7280;">Verified</span>'
+                }
+            </td>
+        </tr>
+    `).join('');
 }
 
 // Load reports data
@@ -547,16 +466,16 @@ async function loadReportsData() {
         const response = await fetch('/api/faculty/reports');
         if (response.ok) {
             const reports = await response.json();
-            updateReports(reports);
+            updateReportsSection(reports);
         }
     } catch (error) {
         console.error('Error loading reports:', error);
     }
 }
 
-// Update reports
-function updateReports(reports) {
-    // Department statistics
+// Update reports section
+function updateReportsSection(reports) {
+    // Update department stats
     const deptStats = document.getElementById('departmentStats');
     if (deptStats && reports.departmentStats) {
         deptStats.innerHTML = reports.departmentStats.map(dept => `
@@ -566,8 +485,8 @@ function updateReports(reports) {
             </div>
         `).join('');
     }
-    
-    // CGPA distribution
+
+    // Update CGPA distribution
     const cgpaDistribution = document.getElementById('cgpaDistribution');
     if (cgpaDistribution && reports.cgpaDistribution) {
         cgpaDistribution.innerHTML = Object.entries(reports.cgpaDistribution).map(([range, count]) => `
@@ -577,8 +496,8 @@ function updateReports(reports) {
             </div>
         `).join('');
     }
-    
-    // Certificate analytics
+
+    // Update certificate analytics
     const certAnalytics = document.getElementById('certificateAnalytics');
     if (certAnalytics && reports.certificateAnalytics) {
         certAnalytics.innerHTML = Object.entries(reports.certificateAnalytics).map(([status, count]) => `
@@ -590,80 +509,54 @@ function updateReports(reports) {
     }
 }
 
-// Utility functions
-function resetCreateForm() {
-    document.getElementById('createStudentForm').reset();
-    document.getElementById('defaultPassword').value = 'student123';
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
-}
-
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString();
-}
-
-function showLoading(show) {
-    // Implementation for loading state
-    console.log('Loading:', show);
-}
-
-function showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        color: white;
-        font-weight: 500;
-        z-index: 1001;
-        transform: translateX(400px);
-        transition: transform 0.3s ease;
-        max-width: 300px;
-    `;
+// Filter functions
+function filterStudents() {
+    const searchTerm = document.getElementById('studentSearch').value.toLowerCase();
+    const classFilter = document.getElementById('classFilter').value;
     
-    // Set background color based on type
-    const colors = {
-        success: '#059669',
-        error: '#dc2626',
-        warning: '#f59e0b',
-        info: '#6366f1'
-    };
+    let filteredStudents = studentsData;
     
-    notification.style.backgroundColor = colors[type] || colors.info;
-    notification.textContent = message;
+    if (searchTerm) {
+        filteredStudents = filteredStudents.filter(student => 
+            student.first_name.toLowerCase().includes(searchTerm) ||
+            student.last_name.toLowerCase().includes(searchTerm) ||
+            student.register_number.toLowerCase().includes(searchTerm)
+        );
+    }
     
-    document.body.appendChild(notification);
+    if (classFilter) {
+        filteredStudents = filteredStudents.filter(student => 
+            student.class_id == classFilter
+        );
+    }
     
-    // Animate in
-    setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-    }, 100);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        notification.style.transform = 'translateX(400px)';
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, 300);
-    }, 3000);
+    updateStudentsTable(filteredStudents);
 }
 
-// Refresh functions
-function refreshDashboard() {
-    loadDashboardData();
+function filterCertificates() {
+    const searchTerm = document.getElementById('certificateSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    let filteredCertificates = certificatesData;
+    
+    if (searchTerm) {
+        filteredCertificates = filteredCertificates.filter(cert => 
+            cert.student_name.toLowerCase().includes(searchTerm) ||
+            cert.certificate_name.toLowerCase().includes(searchTerm) ||
+            cert.issuing_organization.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    if (statusFilter) {
+        filteredCertificates = filteredCertificates.filter(cert => 
+            cert.verification_status === statusFilter
+        );
+    }
+    
+    updateCertificatesTable(filteredCertificates);
 }
 
-function refreshCertificates() {
-    loadCertificatesData();
-}
-
-// Certificate verification function
+// Verify certificate
 async function verifyCertificate(certId) {
     try {
         const response = await fetch(`/api/faculty/verify-certificate/${certId}`, {
@@ -672,7 +565,7 @@ async function verifyCertificate(certId) {
         
         if (response.ok) {
             showNotification('Certificate verified successfully!', 'success');
-            loadCertificatesData();
+            loadCertificatesData(); // Refresh data
         } else {
             showNotification('Error verifying certificate', 'error');
         }
@@ -682,46 +575,234 @@ async function verifyCertificate(certId) {
     }
 }
 
-// Profile and logout functions
-function showProfile() {
-    alert(`Profile Information:
-    
-Name: ${currentUser.firstName} ${currentUser.lastName}
-Username: ${currentUser.username}
-Email: ${currentUser.email}
-Role: ${currentUser.userType}
-Employee ID: ${currentUser.employeeId || 'N/A'}
-Designation: ${currentUser.designation || 'N/A'}`);
+// Refresh functions
+function refreshDashboard() {
+    loadDashboardData();
 }
 
-async function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        try {
-            const response = await fetch('/logout', {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                window.location.href = '/login';
-            } else {
-                showNotification('Error logging out', 'error');
-            }
-        } catch (error) {
-            console.error('Logout error:', error);
-            window.location.href = '/login';
-        }
-    }
+function refreshStudentData() {
+    loadMyStudents();
 }
 
-// Export and report functions
+function refreshCertificates() {
+    loadCertificatesData();
+}
+
+// Export functions
 function exportStudentData() {
-    showNotification('Export functionality will be implemented soon', 'info');
+    if (!studentsData || studentsData.length === 0) {
+        showNotification('No student data to export', 'error');
+        return;
+    }
+    
+    const csvContent = convertToCSV(studentsData);
+    downloadCSV(csvContent, 'students_data.csv');
 }
 
 function generateBatchReport() {
-    showNotification('Report generation functionality will be implemented soon', 'info');
+    showNotification('Batch report generation feature coming soon!', 'info');
 }
 
-function viewCertificate(certId) {
-    showNotification('Certificate viewer will be implemented soon', 'info');
+// Utility functions
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+}
+
+function convertToCSV(data) {
+    if (!data || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvRows = [headers.join(',')];
+    
+    data.forEach(row => {
+        const values = headers.map(header => {
+            const value = row[header];
+            return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+        });
+        csvRows.push(values.join(','));
+    });
+    
+    return csvRows.join('\n');
+}
+
+function downloadCSV(content, filename) {
+    const blob = new Blob([content], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function showNotification(message, type = 'info') {
+    // Simple alert for now - can be enhanced with toast notifications
+    alert(message);
+}
+
+function showLoading(show) {
+    // Simple loading implementation - can be enhanced
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+        loadingEl.style.display = show ? 'block' : 'none';
+    }
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        window.location.href = '/logout';
+    }
+}
+
+// Profile function
+function showProfile() {
+    loadProfileData();
+}
+
+// Load and display profile data
+async function loadProfileData() {
+    try {
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                displayProfileModal(data.profile);
+            } else {
+                showNotification('Error loading profile: ' + data.message, 'error');
+            }
+        } else {
+            showNotification('Error loading profile', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        showNotification('Error loading profile', 'error');
+    }
+}
+
+// Display profile in a modal
+function displayProfileModal(profile) {
+    const modalHtml = `
+        <div class="modal fade" id="profileModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Faculty Profile</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Personal Information</h6>
+                                <p><strong>Name:</strong> ${profile.first_name} ${profile.last_name}</p>
+                                <p><strong>Faculty Code:</strong> ${profile.faculty_code}</p>
+                                <p><strong>Email:</strong> ${profile.email}</p>
+                                <p><strong>Phone:</strong> ${profile.phone || 'Not provided'}</p>
+                                <p><strong>Gender:</strong> ${profile.gender || 'Not provided'}</p>
+                                <p><strong>Date of Birth:</strong> ${profile.date_of_birth || 'Not provided'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Professional Information</h6>
+                                <p><strong>Department:</strong> ${profile.dept_name}</p>
+                                <p><strong>Designation:</strong> ${profile.designation}</p>
+                                <p><strong>Qualification:</strong> ${profile.qualification || 'Not provided'}</p>
+                                <p><strong>Experience:</strong> ${profile.experience_years || 0} years</p>
+                                <p><strong>Date of Joining:</strong> ${profile.date_of_joining || 'Not provided'}</p>
+                                <p><strong>Mentor Class:</strong> ${profile.mentor_class || 'Not assigned'}</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-12">
+                                <h6>Change Password</h6>
+                                <form id="changePasswordForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="currentPassword" class="form-label">Current Password</label>
+                                                <input type="password" class="form-control" id="currentPassword" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="newPassword" class="form-label">New Password</label>
+                                                <input type="password" class="form-control" id="newPassword" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Change Password</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('profileModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('profileModal'));
+    modal.show();
+
+    // Add event listener for password change form
+    document.getElementById('changePasswordForm').addEventListener('submit', handlePasswordChange);
+}
+
+// Handle password change
+async function handlePasswordChange(e) {
+    e.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+
+    if (!currentPassword || !newPassword) {
+        showNotification('Please fill in both password fields', 'error');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        showNotification('New password must be at least 6 characters long', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentPassword,
+                newPassword
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification('Password changed successfully', 'success');
+            document.getElementById('changePasswordForm').reset();
+        } else {
+            showNotification(data.message || 'Error changing password', 'error');
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showNotification('Error changing password', 'error');
+    }
 }

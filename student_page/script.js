@@ -316,39 +316,168 @@ function updateNotificationBadge() {
 
 // Profile Menu Functions
 function showProfile() {
-    if (!currentUser || !studentData) {
-        alert('Profile data not available');
+    loadStudentProfile();
+}
+
+// Load and display student profile
+async function loadStudentProfile() {
+    try {
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                displayStudentProfileModal(data.profile);
+            } else {
+                showAlert('Error loading profile: ' + data.message, 'error');
+            }
+        } else {
+            showAlert('Error loading profile', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        showAlert('Error loading profile', 'error');
+    }
+    profileDropdown.classList.remove('active');
+}
+
+// Display student profile in a modal
+function displayStudentProfileModal(profile) {
+    const modalHtml = `
+        <div class="modal fade" id="studentProfileModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Student Profile</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Personal Information</h6>
+                                <p><strong>Name:</strong> ${profile.first_name} ${profile.last_name}</p>
+                                <p><strong>Register Number:</strong> ${profile.register_number}</p>
+                                <p><strong>Email:</strong> ${profile.email}</p>
+                                <p><strong>Phone:</strong> ${profile.phone || 'Not provided'}</p>
+                                <p><strong>Gender:</strong> ${profile.gender || 'Not provided'}</p>
+                                <p><strong>Date of Birth:</strong> ${profile.date_of_birth || 'Not provided'}</p>
+                                <p><strong>Address:</strong> ${profile.address || 'Not provided'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Academic Information</h6>
+                                <p><strong>Course:</strong> ${profile.course_name}</p>
+                                <p><strong>Department:</strong> ${profile.dept_name}</p>
+                                <p><strong>Class:</strong> ${profile.class_name}</p>
+                                <p><strong>Academic Year:</strong> ${profile.year_name}</p>
+                                <p><strong>Current Semester:</strong> ${profile.current_semester}</p>
+                                <p><strong>Current Year:</strong> ${profile.current_year}</p>
+                                <p><strong>Current CGPA:</strong> ${profile.current_cgpa || '0.00'}</p>
+                                <p><strong>Mentor:</strong> ${profile.mentor_name || 'Not assigned'}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Parent Information</h6>
+                                <p><strong>Parent Name:</strong> ${profile.parent_name || 'Not provided'}</p>
+                                <p><strong>Parent Phone:</strong> ${profile.parent_phone || 'Not provided'}</p>
+                                <p><strong>Parent Email:</strong> ${profile.parent_email || 'Not provided'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Other Information</h6>
+                                <p><strong>Admission Date:</strong> ${profile.admission_date || 'Not provided'}</p>
+                                <p><strong>Enrollment Status:</strong> ${profile.enrollment_status}</p>
+                                <p><strong>Total Credits:</strong> ${profile.total_credits || 0}</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-12">
+                                <h6>Change Password</h6>
+                                <form id="studentChangePasswordForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="studentCurrentPassword" class="form-label">Current Password</label>
+                                                <input type="password" class="form-control" id="studentCurrentPassword" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="studentNewPassword" class="form-label">New Password</label>
+                                                <input type="password" class="form-control" id="studentNewPassword" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Change Password</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('studentProfileModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('studentProfileModal'));
+    modal.show();
+
+    // Add event listener for password change form
+    document.getElementById('studentChangePasswordForm').addEventListener('submit', handleStudentPasswordChange);
+}
+
+// Handle student password change
+async function handleStudentPasswordChange(e) {
+    e.preventDefault();
+    
+    const currentPassword = document.getElementById('studentCurrentPassword').value;
+    const newPassword = document.getElementById('studentNewPassword').value;
+
+    if (!currentPassword || !newPassword) {
+        showAlert('Please fill in both password fields', 'error');
         return;
     }
-    
-    const student = studentData.student;
-    const profileInfo = `
-Profile Information:
 
-Personal Details:
-• Name: ${currentUser.firstName} ${currentUser.lastName}
-• Register Number: ${currentUser.registerNumber}
-• Email: ${currentUser.email}
-• Phone: ${student?.phone || 'Not provided'}
-• Date of Birth: ${student?.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'Not provided'}
+    if (newPassword.length < 6) {
+        showAlert('New password must be at least 6 characters long', 'error');
+        return;
+    }
 
-Academic Information:
-• Course: ${student?.course_name || 'Not assigned'}
-• Department: ${student?.dept_name || 'Not assigned'}
-• Batch Year: ${student?.batch_year || 'Not assigned'}
-• Current Semester: ${student?.semester || 'Not assigned'}
-• Current CGPA: ${student?.current_cgpa?.toFixed(2) || '0.00'}
-• Enrollment Status: ${student?.enrollment_status || 'Active'}
+    try {
+        const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentPassword,
+                newPassword
+            })
+        });
 
-Statistics:
-• Total Certificates: ${student?.total_certificates || 0}
-• Verified Certificates: ${student?.verified_certificates || 0}
-• Average Attendance: ${student?.average_attendance?.toFixed(1) || '0.0'}%
-• Last Login: ${currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleString() : 'First time'}
-    `;
-    
-    alert(profileInfo);
-    profileDropdown.classList.remove('active');
+        const data = await response.json();
+
+        if (data.success) {
+            showAlert('Password changed successfully', 'success');
+            document.getElementById('studentChangePasswordForm').reset();
+        } else {
+            showAlert(data.message || 'Error changing password', 'error');
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showAlert('Error changing password', 'error');
+    }
 }
 
 function showSettings() {
