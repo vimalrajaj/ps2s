@@ -512,7 +512,7 @@ async function logout() {
 // Navigation to Certificate Verification
 function goToCertificateVerification() {
     // Open the certificate verification page
-    window.open('../certificate_verification/public/index.html', '_blank');
+    window.open('/certificate-verification', '_blank');
 }
 
 // Data Loading Functions

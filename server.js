@@ -106,6 +106,8 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/student');
 const facultyRoutes = require('./routes/faculty');
+const departmentRoutes = require('./routes/department');
+const subjectRoutes = require('./routes/subjects');
 
 // Use routes with database connection
 app.use('/', (req, res, next) => {
@@ -123,11 +125,88 @@ app.use('/api', (req, res, next) => {
     next();
 }, facultyRoutes);
 
-// TODO: Add your API routes here
-// Example:
-// app.post('/api/create-student', (req, res) => {
-//   // Your logic here
-// });
+app.use('/api', (req, res, next) => {
+    req.dbPool = dbPool;
+    next();
+}, departmentRoutes);
+
+app.use('/api', (req, res, next) => {
+    req.dbPool = dbPool;
+    next();
+}, subjectRoutes);
+
+// Certificate verification route
+app.post('/verify', upload.single('certificate'), async (req, res) => {
+    try {
+        const { name } = req.body;
+        const certificateFile = req.file;
+
+        if (!name || !certificateFile) {
+            return res.status(400).json({
+                status: 'Invalid',
+                reason: 'Name and certificate file are required'
+            });
+        }
+
+        console.log('Certificate verification request:', {
+            name: name,
+            filename: certificateFile.filename,
+            size: certificateFile.size
+        });
+
+        // Here you would implement your certificate verification logic
+        // For now, let's create a mock verification response
+        
+        // Simulate different verification outcomes based on name for demo
+        const mockResults = {
+            'John Doe': {
+                status: 'Valid',
+                certificate: {
+                    name: 'John Doe',
+                    course: 'AWS Cloud Practitioner',
+                    id: 'AWS-CP-2024-001',
+                    issuer: 'Amazon Web Services'
+                },
+                message: 'Certificate successfully verified against AWS database'
+            },
+            'Jane Smith': {
+                status: 'PartiallyVerified',
+                certificate: {
+                    name: 'Jane Smith',
+                    course: 'Azure Fundamentals',
+                    id: 'AZ-900-2024-002'
+                },
+                message: 'Certificate found but name mismatch detected',
+                action: 'Please contact issuing authority to update certificate details'
+            }
+        };
+
+        // Check if we have a mock result for this name
+        const result = mockResults[name] || {
+            status: 'Valid',
+            certificate: {
+                name: name,
+                course: 'Professional Certificate',
+                id: 'CERT-' + Date.now(),
+                issuer: 'Verification System'
+            },
+            message: 'Certificate verified successfully',
+            note: 'This is a demo verification. In production, this would scan QR codes and verify against real databases.'
+        };
+
+        // Clean up uploaded file (optional - you might want to keep it)
+        // fs.unlinkSync(certificateFile.path);
+
+        res.json(result);
+
+    } catch (error) {
+        console.error('Certificate verification error:', error);
+        res.status(500).json({
+            status: 'Invalid',
+            reason: 'Internal server error during verification'
+        });
+    }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

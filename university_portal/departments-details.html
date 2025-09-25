@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Departments Details - University Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style-enhanced.css">
+    <style>
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-box {
+            position: relative;
+            min-width: 300px;
+        }
+        .search-box input {
+            padding-left: 40px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .dept-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .dept-code-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        .count-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            min-width: 40px;
+            text-align: center;
+        }
+        .hod-info {
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .export-btn {
+            background: #28a745;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .export-btn:hover {
+            background: #218838;
+            color: white;
+        }
+        .back-btn {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        .back-btn:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
+        }
+        .contact-info {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .dept-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .dept-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="mb-1"><i class="fas fa-building me-2"></i>All Departments Details</h2>
+                <p class="text-muted mb-0">Complete overview of all university departments</p>
+            </div>
+            <div class="header-actions">
+                <div class="search-box">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search departments...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button class="export-btn" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel me-2"></i>Export Excel
+                </button>
+                <a href="index.html" class="back-btn">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 bg-info text-white">
+                    <div class="card-body text-center">
+                        <h4 id="totalDepartmentsCount">0</h4>
+                        <small>Total Departments</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-success text-white">
+                    <div class="card-body text-center">
+                        <h4 id="totalFacultyCount">0</h4>
+                        <small>Total Faculty</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h4 id="totalStudentsCount">0</h4>
+                        <small>Total Students</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h4 id="totalCoursesCount">0</h4>
+                        <small>Total Courses</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Departments Table -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="departmentsTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 60px;">#</th>
+                            <th>Department Name</th>
+                            <th>HOD Name</th>
+                            <th>No. of Faculty</th>
+                            <th>No. of Students</th>
+                        </tr>
+                    </thead>
+                    <tbody id="departmentsTableBody">
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 mb-0">Loading departments data...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div>
+                <span class="text-muted" id="paginationInfo">Showing 0 - 0 of 0 departments</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let allDepartments = [];
+        let filteredDepartments = [];
+
+        // Department color mapping
+        const deptColors = {
+            'CSE': '#007bff',
+            'ECE': '#28a745',
+            'ME': '#dc3545',
+            'IT': '#ffc107',
+            'EEE': '#17a2b8',
+            'CE': '#6f42c1',
+            'AI': '#fd7e14',
+            'DS': '#20c997'
+        };
+
+        // Load departments data
+        async function loadDepartmentsData() {
+            try {
+                const response = await fetch('/api/departments/all-details');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allDepartments = data.departments;
+                    filteredDepartments = allDepartments;
+                    updateStatistics();
+                    displayDepartments();
+                } else {
+                    showError('Failed to load departments data');
+                }
+            } catch (error) {
+                console.error('Error loading departments:', error);
+                showError('Error loading departments data');
+            }
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('totalDepartmentsCount').textContent = allDepartments.length;
+            
+            const totalFaculty = allDepartments.reduce((sum, dept) => sum + (dept.faculty_count || 0), 0);
+            document.getElementById('totalFacultyCount').textContent = totalFaculty;
+            
+            const totalStudents = allDepartments.reduce((sum, dept) => sum + (dept.student_count || 0), 0);
+            document.getElementById('totalStudentsCount').textContent = totalStudents;
+            
+            const totalCourses = allDepartments.reduce((sum, dept) => sum + (dept.courses_count || 0), 0);
+            document.getElementById('totalCoursesCount').textContent = totalCourses;
+        }
+
+        // Display departments
+        function displayDepartments() {
+            const tbody = document.getElementById('departmentsTableBody');
+
+            if (filteredDepartments.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-4">
+                            <i class="fas fa-building fa-3x text-muted mb-3"></i>
+                            <p>No departments found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filteredDepartments.map((dept, index) => {
+                return `
+                    <tr class="dept-card">
+                        <td>${index + 1}</td>
+                        <td>
+                            <div>
+                                <strong>${dept.dept_name}</strong>
+                                <div class="mt-1">
+                                    <span class="badge bg-secondary">
+                                        ${dept.dept_code}
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>${dept.dept_head || 'Not Assigned'}</strong>
+                        </td>
+                        <td>
+                            <span class="count-badge bg-success text-white">
+                                <i class="fas fa-chalkboard-teacher me-1"></i>
+                                ${dept.faculty_count || 0}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="count-badge bg-primary text-white">
+                                <i class="fas fa-graduation-cap me-1"></i>
+                                ${dept.student_count || 0}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            updatePaginationInfo();
+        }
+
+        // Update pagination info
+        function updatePaginationInfo() {
+            const total = filteredDepartments.length;
+            document.getElementById('paginationInfo').textContent = 
+                `Showing 1 - ${total} of ${total} departments`;
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                filteredDepartments = allDepartments;
+            } else {
+                filteredDepartments = allDepartments.filter(dept => 
+                    dept.dept_code.toLowerCase().includes(searchTerm) ||
+                    dept.dept_name.toLowerCase().includes(searchTerm) ||
+                    (dept.dept_head && dept.dept_head.toLowerCase().includes(searchTerm)) ||
+                    (dept.building && dept.building.toLowerCase().includes(searchTerm)) ||
+                    (dept.contact_email && dept.contact_email.toLowerCase().includes(searchTerm)) ||
+                    (dept.courses && dept.courses.toLowerCase().includes(searchTerm))
+                );
+            }
+            
+            updateStatistics();
+            displayDepartments();
+        });
+
+        // Export to Excel
+        function exportToExcel() {
+            const exportData = filteredDepartments.map((dept, index) => ({
+                'S.No': index + 1,
+                'Department Code': dept.dept_code,
+                'Department Name': dept.dept_name,
+                'HOD Name': dept.dept_head || 'Not Assigned',
+                'HOD Email': dept.hod_email || 'N/A',
+                'HOD Phone': dept.hod_phone || 'N/A',
+                'Faculty Count': dept.faculty_count || 0,
+                'Student Count': dept.student_count || 0,
+                'Building/Location': dept.building || 'N/A',
+                'Department Email': dept.contact_email || 'N/A',
+                'Department Phone': dept.contact_phone || 'N/A',
+                'Courses Offered': dept.courses || 'N/A',
+                'Number of Courses': dept.courses_count || 0,
+                'Created Date': formatDate(dept.created_at),
+                'Last Updated': formatDate(dept.updated_at)
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            
+            // Auto-width columns
+            const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+                wch: Math.max(key.length, 15)
+            }));
+            ws['!cols'] = colWidths;
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Departments Details');
+            XLSX.writeFile(wb, `Departments_Details_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString('en-IN');
+        }
+
+        function showError(message) {
+            document.getElementById('departmentsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="10" class="text-center py-4 text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <p>${message}</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDepartmentsData();
+        });
+    </script>
+</body>
+</html>
