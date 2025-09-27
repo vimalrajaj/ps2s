@@ -22,8 +22,8 @@ router.get('/subjects/:departmentId/:academicYear/:semester', async (req, res) =
                 f.faculty_code,
                 f.email as faculty_email,
                 f.phone as faculty_phone,
-                d.name as department_name,
-                d.code as department_code
+                d.dept_name as department_name,
+                d.dept_code as department_code
             FROM subjects s
             LEFT JOIN faculty f ON s.faculty_id = f.id
             LEFT JOIN departments d ON s.department_id = d.id

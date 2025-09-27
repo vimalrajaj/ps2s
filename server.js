@@ -73,12 +73,29 @@ app.use('/university-portal', express.static(path.join(__dirname, 'university_po
 
 // Serve static files for dashboard pages
 app.use('/student-dashboard', express.static(path.join(__dirname, 'student_page')));
-app.use('/faculty-dashboard', express.static(path.join(__dirname, 'faculty_page')));
+// Faculty dashboard is handled by auth routes - removed static middleware
 app.use('/admin-dashboard', express.static(path.join(__dirname, 'university_portal')));
+
+// Serve sample files
+app.get('/sample_marks_upload.xlsx', (req, res) => {
+    const filePath = path.join(__dirname, 'sample_marks_upload.xlsx');
+    res.download(filePath, 'sample_marks_upload.xlsx', (err) => {
+        if (err) {
+            console.error('Error downloading sample Excel file:', err);
+            res.status(404).send('Sample file not found');
+        }
+    });
+});
 
 // Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// File upload middleware
+const fileUpload = require('express-fileupload');
+app.use(fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+}));
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({

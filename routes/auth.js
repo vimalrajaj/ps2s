@@ -14,9 +14,15 @@ function requireAuth(req, res, next) {
 // Role-based middleware
 function requireRole(roles) {
     return (req, res, next) => {
+        console.log('🔍 Role check - User:', req.session?.user);
+        console.log('🔍 Role check - Required roles:', roles);
+        console.log('🔍 Role check - User type:', req.session?.user?.type);
+        
         if (req.session && req.session.user && roles.includes(req.session.user.type)) {
+            console.log('✅ Role check passed');
             return next();
         } else {
+            console.log('❌ Role check failed - redirecting to login');
             return res.redirect('/login');
         }
     };
@@ -80,6 +86,8 @@ router.post('/login', async (req, res) => {
                 designation: faculty.designation
             };
             
+            console.log('✅ Faculty login successful:', req.session.user);
+            
             return res.json({
                 success: true,
                 message: 'Faculty login successful',
@@ -136,14 +144,28 @@ router.get('/university-portal', (req, res) => {
 });
 
 router.get('/faculty-dashboard', requireAuth, requireRole(['faculty']), (req, res) => {
+    console.log('✅ Faculty dashboard access - authenticated user:', req.session.user);
     res.sendFile(path.join(__dirname, '..', 'faculty_page', 'index.html'));
+});
+
+// Serve faculty dashboard static files (CSS, JS) for authenticated users
+router.get('/faculty-dashboard/*', requireAuth, requireRole(['faculty']), (req, res) => {
+    const filePath = req.params[0];
+    const fullPath = path.join(__dirname, '..', 'faculty_page', filePath);
+    
+    // Check if file exists and serve it
+    if (require('fs').existsSync(fullPath)) {
+        res.sendFile(fullPath);
+    } else {
+        res.status(404).send('File not found');
+    }
 });
 
 router.get('/student-dashboard', requireAuth, requireRole(['student']), (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'student_page', 'index.html'));
 });
 
-// Logout functionality
+// Logout functionality - POST route for API calls
 router.post('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
@@ -157,6 +179,17 @@ router.post('/logout', (req, res) => {
             message: 'Logged out successfully',
             redirectUrl: '/login'
         });
+    });
+});
+
+// Logout functionality - GET route for direct navigation
+router.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Logout error:', err);
+            return res.redirect('/login?error=logout_failed');
+        }
+        res.redirect('/login');
     });
 });
 

@@ -47,7 +47,7 @@ router.post('/create-student', async (req, res) => {
 
         // Get department name and class details
         const [departmentResult] = await req.dbPool.execute(
-            'SELECT name FROM departments WHERE id = ?',
+            'SELECT dept_name FROM departments WHERE id = ?',
             [department]
         );
 
@@ -73,7 +73,7 @@ router.post('/create-student', async (req, res) => {
             });
         }
 
-        const departmentName = departmentResult[0].name;
+        const departmentName = departmentResult[0].dept_name;
         const classInfo = classResult[0];
         
         // Check if class has available capacity
@@ -252,7 +252,7 @@ router.get('/student/:registerNumber', async (req, res) => {
                 s.*,
                 c.class_name,
                 c.section,
-                d.name as department_name,
+                d.dept_name as department_name,
                 ay.year_range
             FROM students s
             LEFT JOIN classes c ON s.class_id = c.id

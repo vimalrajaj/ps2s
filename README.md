@@ -1,79 +1,57 @@
-# University Management System - Complete Setup Guide
+# University Management System
 
-## 🎯 Project Overview
+A comprehensive university management system built with Node.js, Express, and MySQL. This system supports university administrators, faculty, and students with role-based access control.
 
-This is a comprehensive university management system with the following features:
-- **Student Dashboard**: Progress tracking, certificate management, notifications, academic performance
-- **Faculty Dashboard**: Student management, certificate verification, account creation, reports
-- **Certificate Verification**: QR code and OCR-based certificate verification with enhanced small QR detection
-- **Authentication System**: Role-based login with MySQL integration
-- **Database Integration**: Complete MySQL schema with sample data
+## Features
 
-## 📋 Prerequisites
+- **University Portal**: Admin dashboard with student, faculty, and department management
+- **Faculty Dashboard**: Faculty can view their assigned students, manage classes, and verify certificates
+- **Student Portal**: Students can view their profile, courses, and certificates
+- **Authentication**: Role-based access control for different user types
+- **Database Management**: Complete MySQL database with relationships
+- **Certificate Verification**: QR code and OCR-based certificate verification
 
-Before setting up the project, ensure you have:
-1. **Node.js** (v16 or higher) - [Download here](https://nodejs.org/)
-2. **MySQL Server** (v8.0 or higher) - [Download here](https://dev.mysql.com/downloads/)
-3. **MySQL Workbench** (optional but recommended) - [Download here](https://dev.mysql.com/downloads/workbench/)
-4. **Git** (for version control) - [Download here](https://git-scm.com/)
+## Prerequisites
 
-## 🚀 Installation Steps
+- Node.js (v16 or higher)
+- MySQL (v8.0 or higher)
+- Git
 
-### Step 1: Install Required Dependencies
+## Installation Setup
 
-Navigate to your project directory and install all dependencies:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Sanjay6383/sih.git
+   cd sih
+   ```
 
-```bash
-cd "d:\PROGRAMS\WEB DEVELOPMENT\sih"
-npm install express multer mysql2 bcryptjs express-session express-mysql-session jimp qrcode-reader tesseract.js axios cheerio puppeteer
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Step 2: Setup MySQL Database
+3. **Setup MySQL Database**
+   - Create a database named `university_management`
+   - Import your existing database or create the required tables
 
-1. **Open MySQL Workbench** and connect to your MySQL server
-2. **Execute the database script**:
-   - Open the file `database/university_database.sql`
-   - Copy the entire content
-   - Paste and execute it in MySQL Workbench
-3. **Verify database creation**:
-   - You should see `university_management` database created
-   - Tables should be populated with sample data
+4. **Configure Environment Variables**
+   Edit `.env` with your database credentials:
+   ```
+   PORT=3000
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASS=your_mysql_password
+   DB_NAME=university_management
+   ```
 
-### Step 3: Configure Database Connection
+5. **Start the application**
+   ```bash
+   npm start
+   ```
 
-1. **Open `server.js`**
-2. **Update database configuration** (around line 18):
-```javascript
-const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: 'YOUR_MYSQL_PASSWORD', // Replace with your MySQL password
-  database: 'university_management',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-};
-```
-
-### Step 4: Update Session Secret
-
-1. **In `server.js`**, find the session configuration (around line 40)
-2. **Replace the session secret**:
-```javascript
-secret: 'your_unique_session_secret_key_change_this_in_production'
-```
-
-### Step 5: Start the Server
-
-```bash
-node server.js
-```
-
-You should see:
-```
-Server running at http://localhost:3000
-Note: System supports both QR codes and text URL extraction via OCR.
-```
+6. **Access the application**
+   Open http://localhost:3000 in your browser
 
 ## 🔑 Login Credentials
 

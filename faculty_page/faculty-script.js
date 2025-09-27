@@ -104,8 +104,11 @@ function loadSectionData(sectionId) {
         case 'students':
             loadMyStudents();
             break;
-        case 'courses':
-            loadMyCourses();
+        case 'academic-performance':
+            loadAcademicPerformance();
+            break;
+        case 'upload-marks':
+            loadUploadMarks();
             break;
         case 'certificates':
             loadCertificatesData();
@@ -653,9 +656,34 @@ function showLoading(show) {
 }
 
 // Logout function
-function logout() {
+async function logout() {
     if (confirm('Are you sure you want to logout?')) {
-        window.location.href = '/logout';
+        try {
+            const response = await fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Redirect to login page
+                    window.location.href = data.redirectUrl || '/login';
+                } else {
+                    // Fallback - redirect to login anyway
+                    window.location.href = '/login';
+                }
+            } else {
+                // Fallback - redirect to login anyway
+                window.location.href = '/login';
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Fallback - redirect to login anyway
+            window.location.href = '/login';
+        }
     }
 }
 
@@ -805,4 +833,533 @@ async function handlePasswordChange(e) {
         console.error('Error changing password:', error);
         showNotification('Error changing password', 'error');
     }
+}
+
+// Academic Performance Management Functions
+let selectedAcademicYear = null;
+let selectedSemester = null;
+
+// Load academic performance section
+async function loadAcademicPerformance() {
+    try {
+        console.log('🎓 Loading academic years...');
+        // Load academic years
+        const response = await fetch('/api/faculty/academic-years');
+        console.log('🎓 Academic years response:', response.status);
+        
+        if (response.ok) {
+            const academicYears = await response.json();
+            console.log('🎓 Academic years data:', academicYears);
+            updateAcademicYearDropdown(academicYears);
+        } else {
+            console.error('❌ Academic years response not ok:', response.status);
+            const errorText = await response.text();
+            console.error('❌ Error response:', errorText);
+        }
+        
+        // Reset form
+        document.getElementById('academicSelectionForm').style.display = 'block';
+        document.getElementById('performanceManagementContainer').style.display = 'none';
+    } catch (error) {
+        console.error('Error loading academic performance:', error);
+    }
+}
+
+// Update academic year dropdown
+function updateAcademicYearDropdown(academicYears) {
+    console.log('🎓 Updating dropdown with data:', academicYears);
+    const select = document.getElementById('academicYearSelect');
+    
+    if (!select) {
+        console.error('❌ Academic year select element not found!');
+        return;
+    }
+    
+    select.innerHTML = '<option value="">Select Academic Year</option>';
+    
+    if (!academicYears || academicYears.length === 0) {
+        console.warn('⚠️ No academic years data received');
+        return;
+    }
+    
+    academicYears.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year.id;
+        option.textContent = year.year_name;
+        select.appendChild(option);
+        console.log('🎓 Added option:', year.year_name);
+    });
+    
+    console.log('🎓 Dropdown updated with', academicYears.length, 'options');
+}
+
+// Proceed to performance management
+async function proceedToPerformanceManagement() {
+    const academicYearId = document.getElementById('academicYearSelect').value;
+    const semester = document.getElementById('semesterSelect').value;
+    
+    if (!academicYearId || !semester) {
+        showNotification('Please select both academic year and semester', 'error');
+        return;
+    }
+    
+    selectedAcademicYear = academicYearId;
+    selectedSemester = semester;
+    
+    try {
+        // Get the selected academic year text for API call
+        const academicYearSelect = document.getElementById('academicYearSelect');
+        const academicYearValue = academicYearSelect.options[academicYearSelect.selectedIndex].text;
+        
+        // Load subjects for the selected semester and academic year
+        const response = await fetch(`/api/faculty/subjects?semester=${semester}&academic_year=${encodeURIComponent(academicYearValue)}`);
+        if (response.ok) {
+            const subjects = await response.json();
+            updateSubjectDropdowns(subjects);
+        }
+        
+        // Show performance management interface
+        document.getElementById('academicSelectionForm').style.display = 'none';
+        document.getElementById('performanceManagementContainer').style.display = 'block';
+        
+        // Load existing IAs
+        loadExistingIAs();
+        
+    } catch (error) {
+        console.error('Error loading subjects:', error);
+        showNotification('Error loading subjects', 'error');
+    }
+}
+
+// Update subject dropdowns
+function updateSubjectDropdowns(subjects) {
+    const addSubjectSelect = document.getElementById('subjectSelect');
+    const filterSubjectSelect = document.getElementById('subjectSelectFilter');
+    
+    // Clear existing options
+    addSubjectSelect.innerHTML = '<option value="">Select Subject</option>';
+    filterSubjectSelect.innerHTML = '<option value="">Select Subject</option>';
+    
+    subjects.forEach(subject => {
+        const option1 = document.createElement('option');
+        option1.value = subject.subject_id;
+        option1.textContent = `${subject.subject_name} (${subject.subject_code})`;
+        addSubjectSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = subject.subject_id;
+        option2.textContent = `${subject.subject_name} (${subject.subject_code})`;
+        filterSubjectSelect.appendChild(option2);
+    });
+}
+
+// Add internal assessment
+async function addInternalAssessment() {
+    const iaNumber = document.getElementById('iaNumberInput').value;
+    const subjectId = document.getElementById('subjectSelect').value;
+    
+    if (!iaNumber || !subjectId) {
+        showNotification('Please select both IA number and subject', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/faculty/add-internal-assessment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                iaNumber: parseInt(iaNumber),
+                subjectId: parseInt(subjectId),
+                academicYearId: parseInt(selectedAcademicYear),
+                semester: parseInt(selectedSemester)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Internal Assessment added successfully', 'success');
+            // Reset form
+            document.getElementById('iaNumberInput').value = '';
+            document.getElementById('subjectSelect').value = '';
+            // Reload existing IAs
+            loadExistingIAs();
+        } else {
+            showNotification(data.message || 'Error adding Internal Assessment', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding IA:', error);
+        showNotification('Error adding Internal Assessment', 'error');
+    }
+}
+
+// Load existing IAs for filter dropdowns
+async function loadExistingIAs() {
+    try {
+        const response = await fetch(`/api/faculty/internal-assessments?academicYearId=${selectedAcademicYear}&semester=${selectedSemester}`);
+        if (response.ok) {
+            const ias = await response.json();
+            updateIAFilterDropdowns(ias);
+        }
+    } catch (error) {
+        console.error('Error loading existing IAs:', error);
+    }
+}
+
+// Update IA filter dropdowns
+function updateIAFilterDropdowns(ias) {
+    const iaSelect = document.getElementById('iaSelectFilter');
+    iaSelect.innerHTML = '<option value="">Select IA</option>';
+    
+    // Get unique IA numbers
+    const uniqueIAs = [...new Set(ias.map(ia => ia.ia_number))];
+    uniqueIAs.forEach(iaNum => {
+        const option = document.createElement('option');
+        option.value = iaNum;
+        option.textContent = `IA ${iaNum}`;
+        iaSelect.appendChild(option);
+    });
+}
+
+// Load student marks for selected IA and subject
+async function loadStudentMarks() {
+    const iaNumber = document.getElementById('iaSelectFilter').value;
+    const subjectId = document.getElementById('subjectSelectFilter').value;
+    
+    if (!iaNumber || !subjectId) {
+        showNotification('Please select both IA number and subject', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/faculty/student-marks?iaNumber=${iaNumber}&subjectId=${subjectId}&academicYearId=${selectedAcademicYear}&semester=${selectedSemester}`);
+        if (response.ok) {
+            const data = await response.json();
+            displayStudentMarks(data.students, data.subjectName, iaNumber);
+        } else {
+            showNotification('Error loading student marks', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading student marks:', error);
+        showNotification('Error loading student marks', 'error');
+    }
+}
+
+// Display student marks in table
+function displayStudentMarks(students, subjectName, iaNumber) {
+    const container = document.getElementById('studentMarksContainer');
+    const tableTitle = document.getElementById('marksTableTitle');
+    const tbody = document.getElementById('studentMarksTable');
+    
+    tableTitle.textContent = `IA ${iaNumber} - ${subjectName}`;
+    
+    tbody.innerHTML = students.map((student, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td>${student.first_name} ${student.last_name}</td>
+            <td>${student.register_number}</td>
+            <td>
+                <input type="number" 
+                       class="form-input" 
+                       style="width: 100px; padding: 5px;" 
+                       min="0" 
+                       max="20" 
+                       step="0.5"
+                       value="${student.marks_obtained || 0}"
+                       data-student-id="${student.student_id}"
+                       data-ia-id="${student.internal_assessment_id}"
+                       onchange="updateMarks(this)">
+            </td>
+            <td>
+                <select class="form-select" 
+                        style="width: 120px; padding: 5px;"
+                        data-student-id="${student.student_id}"
+                        data-ia-id="${student.internal_assessment_id}"
+                        onchange="updateAttendance(this)">
+                    <option value="Present" ${student.attendance_status === 'Present' ? 'selected' : ''}>Present</option>
+                    <option value="Absent" ${student.attendance_status === 'Absent' ? 'selected' : ''}>Absent</option>
+                </select>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-input" 
+                       style="width: 150px; padding: 5px;" 
+                       placeholder="Remarks"
+                       value="${student.remarks || ''}"
+                       data-student-id="${student.student_id}"
+                       data-ia-id="${student.internal_assessment_id}"
+                       onchange="updateRemarks(this)">
+            </td>
+        </tr>
+    `).join('');
+    
+    container.style.display = 'block';
+}
+
+// Update marks
+function updateMarks(input) {
+    const marks = parseFloat(input.value) || 0;
+    if (marks < 0 || marks > 20) {
+        showNotification('Marks should be between 0 and 20', 'error');
+        input.value = Math.max(0, Math.min(20, marks));
+    }
+}
+
+// Update attendance
+function updateAttendance(select) {
+    // Logic handled in saveAllMarks function
+}
+
+// Update remarks
+function updateRemarks(input) {
+    // Logic handled in saveAllMarks function
+}
+
+// Save all marks
+async function saveAllMarks() {
+    const tbody = document.getElementById('studentMarksTable');
+    const rows = tbody.querySelectorAll('tr');
+    const marksData = [];
+    
+    rows.forEach(row => {
+        const marksInput = row.querySelector('input[type="number"]');
+        const attendanceSelect = row.querySelector('select');
+        const remarksInput = row.querySelector('input[type="text"]');
+        
+        if (marksInput && attendanceSelect) {
+            marksData.push({
+                studentId: parseInt(marksInput.dataset.studentId),
+                internalAssessmentId: parseInt(marksInput.dataset.iaId),
+                marksObtained: parseFloat(marksInput.value) || 0,
+                attendanceStatus: attendanceSelect.value,
+                remarks: remarksInput.value || null
+            });
+        }
+    });
+    
+    try {
+        const response = await fetch('/api/faculty/save-student-marks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ marksData })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('All marks saved successfully', 'success');
+        } else {
+            showNotification(data.message || 'Error saving marks', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving marks:', error);
+        showNotification('Error saving marks', 'error');
+    }
+}
+
+// =================================
+// Upload Marks Functions
+// =================================
+
+// Load upload marks section
+async function loadUploadMarks() {
+    console.log('📤 Loading Upload Marks section');
+    // Reset upload form
+    document.getElementById('marksFile').value = '';
+    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('uploadResults').style.display = 'none';
+}
+
+// Validate selected file
+function validateFile(input) {
+    const file = input.files[0];
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    if (file) {
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        if (fileExtension === 'xlsx' || fileExtension === 'xls' || fileExtension === 'csv') {
+            uploadBtn.disabled = false;
+            showNotification(`${fileExtension.toUpperCase()} file selected successfully`, 'success');
+        } else {
+            uploadBtn.disabled = true;
+            showNotification('Please select a valid file (.xlsx, .xls, or .csv)', 'error');
+            input.value = '';
+        }
+    } else {
+        uploadBtn.disabled = true;
+    }
+}
+
+// Download sample file (CSV or Excel)
+function downloadSampleFile(format = 'csv') {
+    if (format === 'excel') {
+        // Download Excel file from server
+        const a = document.createElement('a');
+        a.href = '/sample_marks_upload.xlsx';
+        a.download = 'sample_marks_upload.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showNotification('Excel sample file downloaded successfully', 'success');
+    } else {
+        // Create CSV sample data
+        const sampleData = [
+            ['Academic Year', 'Semester', 'IA', 'Subject', 'Subject Code', 'Student ID', 'Student Name', 'Marks'],
+            ['2024-25', '1', '1', 'Mathematics for Computer Science', 'CSE102', '141', 'sanjay v', '18'],
+            ['2024-25', '1', '1', 'Mathematics for Computer Science', 'CSE102', '123', 'xyx d', '16'],
+            ['2024-25', '1', '1', 'Mathematics for Computer Science', 'CSE102', '182', 'vimal javakumar', '19'],
+            ['2024-25', '1', '1', 'Programming Fundamentals', 'CSE101', '141', 'sanjay v', '17'],
+            ['2024-25', '1', '1', 'Programming Fundamentals', 'CSE101', '123', 'xyx d', '15'],
+            ['2024-25', '1', '1', 'Programming Fundamentals', 'CSE101', '182', 'vimal javakumar', '20']
+        ];
+        
+        // Convert to CSV format
+        const csvContent = sampleData.map(row => row.join(',')).join('\n');
+        
+        // Create and download file
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sample_marks_upload.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('CSV sample file downloaded successfully', 'success');
+    }
+}
+
+// Upload marks file
+async function uploadMarksFile() {
+    const fileInput = document.getElementById('marksFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showNotification('Please select a file first', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('marksFile', file);
+    
+    try {
+        showNotification('Uploading file...', 'info');
+        
+        const response = await fetch('/api/faculty/upload-marks', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('File uploaded successfully', 'success');
+            displayUploadResults(data.results);
+        } else {
+            showNotification(data.message || 'Error uploading file', 'error');
+        }
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        showNotification('Error uploading file', 'error');
+    }
+}
+
+// Display upload results
+function displayUploadResults(results) {
+    const uploadResults = document.getElementById('uploadResults');
+    const uploadMessage = document.getElementById('uploadMessage');
+    const summaryTableBody = document.getElementById('uploadSummaryTableBody');
+    
+    uploadResults.style.display = 'block';
+    
+    // Show upload statistics
+    uploadMessage.innerHTML = `
+        <div class="alert alert-success">
+            <strong>Upload Successful!</strong><br>
+            Total Records: ${results.totalRecords}<br>
+            Successfully Processed: ${results.successCount}<br>
+            Errors: ${results.errorCount}
+        </div>
+    `;
+    
+    // Group data by Academic Year, Semester, IA, and Subject
+    const groupedData = {};
+    results.processedData.forEach(record => {
+        const key = `${record.academicYear}-${record.semester}-${record.ia}-${record.subject}`;
+        if (!groupedData[key]) {
+            groupedData[key] = {
+                academicYear: record.academicYear,
+                semester: record.semester,
+                ia: record.ia,
+                subject: record.subject,
+                subjectCode: record.subjectCode,
+                students: []
+            };
+        }
+        groupedData[key].students.push({
+            studentId: record.studentId,
+            studentName: record.studentName,
+            marks: record.marks,
+            status: record.status || 'Success'
+        });
+    });
+    
+    // Populate summary table
+    summaryTableBody.innerHTML = '';
+    Object.values(groupedData).forEach((group, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${group.academicYear}</td>
+            <td>${group.semester}</td>
+            <td>IA ${group.ia}</td>
+            <td>${group.subject} (${group.subjectCode})</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="showDetailedView(${index}, '${group.subject}')">
+                    <i class="fas fa-eye"></i> View Details
+                </button>
+            </td>
+        `;
+        summaryTableBody.appendChild(row);
+    });
+    
+    // Store grouped data for detailed view
+    window.uploadedGroupedData = Object.values(groupedData);
+}
+
+// Show detailed view
+function showDetailedView(groupIndex, subjectName) {
+    const detailedView = document.getElementById('detailedView');
+    const detailedTableBody = document.getElementById('detailedMarksTableBody');
+    const group = window.uploadedGroupedData[groupIndex];
+    
+    detailedView.style.display = 'block';
+    
+    // Update heading
+    detailedView.querySelector('h6').textContent = `Student Marks Details - ${subjectName}`;
+    
+    // Populate detailed table
+    detailedTableBody.innerHTML = '';
+    group.students.forEach(student => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${student.studentId}</td>
+            <td>${student.studentName}</td>
+            <td>${student.marks}</td>
+            <td>
+                <span class="badge ${student.status === 'Success' ? 'bg-success' : 'bg-danger'}">
+                    ${student.status}
+                </span>
+            </td>
+        `;
+        detailedTableBody.appendChild(row);
+    });
+    
+    // Scroll to detailed view
+    detailedView.scrollIntoView({ behavior: 'smooth' });
 }

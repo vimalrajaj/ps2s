@@ -549,9 +549,15 @@
                     </div>
                 </li>
                 <li class="menu-item">
-                    <div class="menu-link" data-section="courses">
-                        <i class="fas fa-book"></i>
-                        <span>My Courses</span>
+                    <div class="menu-link" data-section="academic-performance">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Academic Performance</span>
+                    </div>
+                </li>
+                <li class="menu-item">
+                    <div class="menu-link" data-section="upload-marks">
+                        <i class="fas fa-upload"></i>
+                        <span>Upload Marks</span>
                     </div>
                 </li>
                 <li class="menu-item">
@@ -695,75 +701,219 @@
                 </div>
             </section>
 
-            <!-- My Courses Section -->
-            <section id="courses" class="content-section">
+            <!-- Academic Performance Section -->
+            <section id="academic-performance" class="content-section">
                 <div class="section-header">
-                    <h2 class="section-title">My Courses & Classes</h2>
-                    <p class="section-subtitle">Manage your assigned courses and classes</p>
+                    <h2 class="section-title">Academic Performance Management</h2>
+                    <p class="section-subtitle">Manage internal assessments and student performance</p>
                 </div>
 
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
-                                <i class="fas fa-chalkboard"></i>
-                            </div>
+                <!-- Step 1: Academic Year & Semester Selection -->
+                <div class="form-container" id="academicSelectionForm">
+                    <h3 style="margin-bottom: 1.5rem; color: #1f2937;">Select Academic Year & Semester</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Academic Year</label>
+                            <select class="form-select" id="academicYearSelect">
+                                <option value="">Select Academic Year</option>
+                                <!-- Will be populated by JavaScript -->
+                            </select>
                         </div>
-                        <div class="stat-value" id="totalClasses">0</div>
-                        <div class="stat-label">Classes Assigned</div>
+                        <div class="form-group">
+                            <label class="form-label">Semester</label>
+                            <select class="form-select" id="semesterSelect">
+                                <option value="">Select Semester</option>
+                                <option value="1">Semester 1</option>
+                                <option value="2">Semester 2</option>
+                                <option value="3">Semester 3</option>
+                                <option value="4">Semester 4</option>
+                                <option value="5">Semester 5</option>
+                                <option value="6">Semester 6</option>
+                                <option value="7">Semester 7</option>
+                                <option value="8">Semester 8</option>
+                            </select>
+                        </div>
                     </div>
-
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);">
-                                <i class="fas fa-users"></i>
-                            </div>
-                        </div>
-                        <div class="stat-value" id="totalStudentsInClasses">0</div>
-                        <div class="stat-label">Total Students</div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
-                                <i class="fas fa-book"></i>
-                            </div>
-                        </div>
-                        <div class="stat-value" id="totalCourses">0</div>
-                        <div class="stat-label">Courses Teaching</div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);">
-                                <i class="fas fa-star"></i>
-                            </div>
-                        </div>
-                        <div class="stat-value" id="avgClassPerformance">0.0</div>
-                        <div class="stat-label">Avg Class Performance</div>
+                    <div style="text-align: center; margin-top: 1.5rem;">
+                        <button class="btn btn-primary" onclick="proceedToPerformanceManagement()">
+                            <i class="fas fa-arrow-right"></i> Select
+                        </button>
                     </div>
                 </div>
 
-                <div class="table-container">
-                    <div class="table-header">
-                        <h3 class="table-title">My Classes</h3>
+                <!-- Step 2: Performance Management Interface (Hidden initially) -->
+                <div class="performance-management-container" id="performanceManagementContainer" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 20% 80%; gap: 2rem; min-height: 500px;">
+                        <!-- Left Side - Add IA -->
+                        <div class="form-container">
+                            <h4 style="margin-bottom: 1rem; color: #1f2937;">Add Internal Assessment</h4>
+                            <div class="form-group">
+                                <label class="form-label">IA Number</label>
+                                <select class="form-select" id="iaNumberInput">
+                                    <option value="">Select IA</option>
+                                    <option value="1">IA 1</option>
+                                    <option value="2">IA 2</option>
+                                    <option value="3">IA 3</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Subject</label>
+                                <select class="form-select" id="subjectSelect">
+                                    <option value="">Select Subject</option>
+                                    <!-- Will be populated by JavaScript -->
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="addInternalAssessment()">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+
+                        <!-- Right Side - IA Management -->
+                        <div class="form-container">
+                            <h4 style="margin-bottom: 1rem; color: #1f2937;">Manage Internal Assessments</h4>
+                            
+                            <!-- IA Selection -->
+                            <div class="form-grid" style="margin-bottom: 1.5rem;">
+                                <div class="form-group">
+                                    <label class="form-label">IA Number</label>
+                                    <select class="form-select" id="iaSelectFilter">
+                                        <option value="">Select IA</option>
+                                        <!-- Will be populated by JavaScript -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Subject</label>
+                                    <select class="form-select" id="subjectSelectFilter">
+                                        <option value="">Select Subject</option>
+                                        <!-- Will be populated by JavaScript -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="text-align: center; margin-bottom: 1.5rem;">
+                                <button class="btn btn-primary" onclick="loadStudentMarks()">
+                                    <i class="fas fa-search"></i> Select
+                                </button>
+                            </div>
+
+                            <hr style="margin: 1.5rem 0;">
+
+                            <!-- Student Marks Table -->
+                            <div id="studentMarksContainer" style="display: none;">
+                                <div class="table-container">
+                                    <div class="table-header">
+                                        <h5 class="table-title" id="marksTableTitle">Student Marks</h5>
+                                        <button class="btn btn-primary" onclick="saveAllMarks()">
+                                            <i class="fas fa-save"></i> Save All
+                                        </button>
+                                    </div>
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>S.No</th>
+                                                <th>Student Name</th>
+                                                <th>Register Number</th>
+                                                <th>Marks (Out of 20)</th>
+                                                <th>Attendance</th>
+                                                <th>Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="studentMarksTable">
+                                            <!-- Will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Class Name</th>
-                                <th>Course</th>
-                                <th>Department</th>
-                                <th>Students</th>
-                                <th>Academic Year</th>
-                                <th>Semester</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="coursesTable">
-                            <!-- Will be populated by JavaScript -->
-                        </tbody>
-                    </table>
+                </div>
+            </section>
+
+            <!-- Upload Marks Section -->
+            <section id="upload-marks" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-title">Upload Marks</h2>
+                    <p class="section-subtitle">Upload student marks via Excel file</p>
+                </div>
+
+                <!-- Upload Form -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Upload Excel File</h5>
+                        <p class="text-muted mb-3">Upload an Excel file containing student marks. The file should include: Academic Year, Semester, IA Number, Subject, Subject Code, Student ID, Student Name, and Marks.</p>
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="marksFile" class="form-label">Select Excel File</label>
+                                    <input type="file" class="form-control" id="marksFile" accept=".xlsx,.xls,.csv" onchange="validateFile(this)">
+                                    <div class="form-text">Supported formats: .xlsx, .xls</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Sample File</label>
+                                    <div>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-outline-info" onclick="downloadSampleFile('csv')">
+                                                <i class="fas fa-file-csv"></i> Download CSV
+                                            </button>
+                                            <button type="button" class="btn btn-outline-success" onclick="downloadSampleFile('excel')">
+                                                <i class="fas fa-file-excel"></i> Download Excel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn btn-primary" onclick="uploadMarksFile()" id="uploadBtn" disabled>
+                            <i class="fas fa-upload"></i> Upload Marks
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Upload Results -->
+                <div class="card mt-4" id="uploadResults" style="display: none;">
+                    <div class="card-body">
+                        <h5 class="card-title">Upload Results</h5>
+                        <div id="uploadMessage"></div>
+                        
+                        <!-- Uploaded Data Summary -->
+                        <div class="table-responsive mt-3" id="uploadedDataSummary">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Academic Year</th>
+                                        <th>Semester</th>
+                                        <th>IA</th>
+                                        <th>Subject</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="uploadSummaryTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Detailed View -->
+                        <div class="mt-4" id="detailedView" style="display: none;">
+                            <h6>Student Marks Details</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Student ID</th>
+                                            <th>Student Name</th>
+                                            <th>Marks</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detailedMarksTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

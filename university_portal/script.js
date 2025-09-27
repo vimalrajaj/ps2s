@@ -165,11 +165,11 @@ async function loadInitialData() {
 }
 
 // Load dashboard statistics with caching
-async function loadDashboardStats() {
+async function loadDashboardStats(forceRefresh = false) {
     try {
-        // Check cache first (cache for 2 minutes)
+        // Check cache first (cache for 2 minutes) - skip if force refresh
         const now = Date.now();
-        if (dashboardCache && (now - cacheTime) < 120000) {
+        if (!forceRefresh && dashboardCache && (now - cacheTime) < 120000) {
             updateDashboardStats(dashboardCache);
             return;
         }
@@ -805,7 +805,7 @@ async function handleStudentSubmit(e) {
         if (result.success) {
             showNotification('Student account created successfully!', 'success');
             resetStudentForm();
-            loadDashboardStats(); // Refresh stats
+            loadDashboardStats(true); // Force refresh stats
         } else {
             showNotification(result.message || 'Error creating student account', 'error');
         }
@@ -852,7 +852,7 @@ async function handleFacultySubmit(e) {
         if (result.success) {
             showNotification('Faculty account created successfully!', 'success');
             resetFacultyForm();
-            loadDashboardStats(); // Refresh stats
+            loadDashboardStats(true); // Force refresh stats
             loadFacultyData(); // Refresh faculty list
         } else {
             showNotification(result.message || 'Error creating faculty account', 'error');
@@ -1255,7 +1255,7 @@ async function createDepartment(event) {
             showNotification('Department created successfully!', 'success');
             resetDepartmentForm();
             loadDepartments(); // Refresh department list
-            loadDashboardStats(); // Refresh dashboard stats
+            loadDashboardStats(true); // Force refresh dashboard stats
         } else {
             showNotification(result.message || 'Error creating department', 'error');
         }
@@ -1319,9 +1319,21 @@ function displayDepartmentTree(departments) {
     container.innerHTML = html;
 }
 
-// Open department details page
+// Open department details page - prevent duplicates
+let openedWindows = {};
+
 function openDepartmentDetailsPage(deptId) {
-    window.open(`department-details.html?id=${deptId}`, '_blank');
+    const windowKey = `dept_${deptId}`;
+    
+    // Check if window is already open and still exists
+    if (openedWindows[windowKey] && !openedWindows[windowKey].closed) {
+        // Focus on existing window
+        openedWindows[windowKey].focus();
+        return;
+    }
+    
+    // Open new window and store reference
+    openedWindows[windowKey] = window.open(`department-details.html?id=${deptId}`, '_blank');
 }
 
 async function viewDepartmentDetails(deptId) {
@@ -1880,7 +1892,7 @@ async function updateDepartment(event, departmentId) {
             showNotification('Department updated successfully!', 'success');
             cancelEdit();
             loadDepartments();
-            loadDashboardStats();
+            loadDashboardStats(true); // Force refresh
         } else {
             showNotification(result.message || 'Error updating department', 'error');
         }
@@ -1925,7 +1937,7 @@ async function deleteDepartment(departmentId, departmentName) {
             if (result.success) {
                 showNotification('Department deleted successfully!', 'success');
                 loadDepartments();
-                loadDashboardStats();
+                loadDashboardStats(true); // Force refresh
             } else {
                 showNotification(result.message || 'Error deleting department', 'error');
             }
@@ -2293,20 +2305,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Navigation functions for detailed views
+// Navigation functions for detailed views - prevent duplicates
 function openStudentsDetails() {
     console.log('📚 Opening students details view...');
-    window.open('students-details.html', '_blank');
+    const windowKey = 'students_details';
+    
+    if (openedWindows[windowKey] && !openedWindows[windowKey].closed) {
+        openedWindows[windowKey].focus();
+        return;
+    }
+    
+    openedWindows[windowKey] = window.open('students-details.html', '_blank');
 }
 
 function openFacultyDetails() {
     console.log('👨‍🏫 Opening faculty details view...');
-    window.open('faculty-details.html', '_blank');
+    const windowKey = 'faculty_details';
+    
+    if (openedWindows[windowKey] && !openedWindows[windowKey].closed) {
+        openedWindows[windowKey].focus();
+        return;
+    }
+    
+    openedWindows[windowKey] = window.open('faculty-details.html', '_blank');
 }
 
 function openDepartmentsDetails() {
     console.log('🏢 Opening departments details view...');
-    window.open('departments-details.html', '_blank');
+    const windowKey = 'departments_details';
+    
+    if (openedWindows[windowKey] && !openedWindows[windowKey].closed) {
+        openedWindows[windowKey].focus();
+        return;
+    }
+    
+    openedWindows[windowKey] = window.open('departments-details.html', '_blank');
 }
 
 // ================================

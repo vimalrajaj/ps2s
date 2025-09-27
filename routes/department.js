@@ -15,7 +15,7 @@ router.post('/departments', async (req, res) => {
 
         // Check if department already exists
         const [existing] = await req.dbPool.execute(
-            'SELECT name FROM departments WHERE name = ? OR code = ?',
+            'SELECT dept_name FROM departments WHERE dept_name = ? OR dept_code = ?',
             [name, code]
         );
 
@@ -28,7 +28,7 @@ router.post('/departments', async (req, res) => {
 
         // Insert new department
         await req.dbPool.execute(
-            'INSERT INTO departments (name, code, description, head_of_department) VALUES (?, ?, ?, ?)',
+            'INSERT INTO departments (dept_name, dept_code, description, head_of_department) VALUES (?, ?, ?, ?)',
             [name, code, description || null, head_of_department || null]
         );
 
@@ -50,7 +50,7 @@ router.post('/departments', async (req, res) => {
 router.get('/departments', async (req, res) => {
     try {
         const [departments] = await req.dbPool.execute(
-            'SELECT * FROM departments ORDER BY name'
+            'SELECT * FROM departments ORDER BY dept_name'
         );
 
         res.json({
@@ -95,7 +95,7 @@ router.put('/departments/:id', async (req, res) => {
 
         // Update department
         await req.dbPool.execute(
-            'UPDATE departments SET name = ?, code = ?, description = ?, head_of_department = ? WHERE id = ?',
+            'UPDATE departments SET dept_name = ?, dept_code = ?, description = ?, head_of_department = ? WHERE id = ?',
             [name, code, description || null, head_of_department || null, id]
         );
 
@@ -375,16 +375,16 @@ router.get('/departments/all-details', async (req, res) => {
         const [departments] = await req.dbPool.execute(`
             SELECT 
                 d.id,
-                d.code as dept_code,
-                d.name as dept_name,
+                d.dept_code as dept_code,
+                d.dept_name as dept_name,
                 d.head_of_department as dept_head,
                 COUNT(DISTINCT f.id) as faculty_count,
                 COUNT(DISTINCT s.id) as student_count
             FROM departments d
-            LEFT JOIN faculty f ON d.name = f.department AND f.status = 'active'
-            LEFT JOIN students s ON d.name = s.department AND s.status = 'active'
-            GROUP BY d.id, d.code, d.name, d.head_of_department
-            ORDER BY d.code
+            LEFT JOIN faculty f ON d.dept_name = f.department AND f.status = 'active'
+            LEFT JOIN students s ON d.dept_name = s.department AND s.status = 'active'
+            GROUP BY d.id, d.dept_code, d.dept_name, d.head_of_department
+            ORDER BY d.dept_code
         `);
 
         console.log('🏢 Fetched', departments.length, 'departments for detailed view');
