@@ -1,0 +1,28 @@
+# Render.com deployment configuration
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: university-management-system
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DB_HOST
+        value: your-mysql-host
+      - key: DB_USER
+        value: your-mysql-user
+      - key: DB_PASSWORD
+        value: your-mysql-password
+      - key: DB_NAME
+        value: university_management
+      - key: DB_PORT
+        value: 3306
