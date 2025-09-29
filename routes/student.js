@@ -19,7 +19,6 @@ router.post('/create-student', async (req, res) => {
             current_year,
             parent_name,
             parent_phone,
-            parent_email,
             address,
             password 
         } = req.body;
@@ -47,7 +46,7 @@ router.post('/create-student', async (req, res) => {
 
         // Get department name and class details
         const [departmentResult] = await req.dbPool.execute(
-            'SELECT dept_name FROM departments WHERE id = ?',
+            'SELECT dept_name, dept_code FROM departments WHERE id = ?',
             [department]
         );
 
@@ -74,10 +73,12 @@ router.post('/create-student', async (req, res) => {
         }
 
         const departmentName = departmentResult[0].dept_name;
+        const departmentCode = departmentResult[0].dept_code;
         const classInfo = classResult[0];
         
-        // Check if class has available capacity
-        if (classInfo.current_strength >= classInfo.capacity) {
+        // Check if class has available capacity (default capacity: 60 students)
+        const maxCapacity = classInfo.capacity || 60;
+        if (classInfo.total_students >= maxCapacity) {
             return res.status(400).json({
                 success: false,
                 message: 'Selected class is full. Please choose another class.'
@@ -98,18 +99,18 @@ router.post('/create-student', async (req, res) => {
                 `INSERT INTO students (
                     register_number, first_name, last_name, email, phone, 
                     date_of_birth, gender, department, class_id, current_semester, current_year,
-                    parent_name, parent_phone, parent_email, address, password, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+                    parent_name, parent_phone, address, password, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
                 [
                     register_number, first_name, last_name, email, phone,
-                    date_of_birth, gender, departmentName, class_id, current_semester || 1, current_year || 1,
-                    parent_name, parent_phone, parent_email, address, studentPassword
+                    date_of_birth, gender, departmentCode, class_id, current_semester || 1, current_year || 1,
+                    parent_name, parent_phone, address, studentPassword
                 ]
             );
 
-            // Update class current strength
+            // Update class total students count
             await connection.execute(
-                'UPDATE classes SET current_strength = current_strength + 1 WHERE id = ?',
+                'UPDATE classes SET total_students = total_students + 1 WHERE id = ?',
                 [class_id]
             );
 
@@ -156,9 +157,15 @@ router.post('/create-student', async (req, res) => {
 // Get all students
 router.get('/students', async (req, res) => {
     try {
-        const [students] = await req.dbPool.execute(
-            'SELECT * FROM students ORDER BY created_at DESC'
-        );
+        const [students] = await req.dbPool.execute(`
+            SELECT 
+                s.*,
+                d.dept_name,
+                d.dept_code
+            FROM students s
+            LEFT JOIN departments d ON s.department = d.dept_code
+            ORDER BY s.created_at DESC
+        `);
 
         console.log('📚 Total students found:', students.length);
 
@@ -185,9 +192,22 @@ router.get('/class/:classId/students', async (req, res) => {
                 s.*,
                 c.class_name,
                 c.section,
-                c.class_teacher
+                c.class_teacher,
+                ay.year_range,
+                ay.start_year,
+                ay.end_year,
+                d.dept_name as department_name,
+                d.dept_code as department_code,
+                COALESCE(s.current_semester, 1) as current_semester,
+                COALESCE(s.current_year, 1) as current_year,
+                COALESCE(s.parent_name, 'N/A') as parent_name,
+                COALESCE(s.parent_phone, 'N/A') as parent_phone,
+                COALESCE(s.address, 'N/A') as address,
+                COALESCE(s.status, 'active') as status
             FROM students s
             LEFT JOIN classes c ON s.class_id = c.id
+            LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
+            LEFT JOIN departments d ON c.department_id = d.id
             WHERE s.class_id = ?
             ORDER BY s.first_name, s.last_name
         `, [classId]);
@@ -205,7 +225,7 @@ router.get('/class/:classId/students', async (req, res) => {
                 f.phone,
                 f.designation,
                 f.faculty_code,
-                ma.assigned_date,
+                ma.assignment_date,
                 ma.status
             FROM mentor_assignments ma
             JOIN faculty f ON ma.faculty_id = f.id
@@ -253,6 +273,7 @@ router.get('/student/:registerNumber', async (req, res) => {
                 c.class_name,
                 c.section,
                 d.dept_name as department_name,
+                d.dept_code,
                 ay.year_range
             FROM students s
             LEFT JOIN classes c ON s.class_id = c.id
@@ -294,16 +315,18 @@ router.get('/students/all-details', async (req, res) => {
                 s.date_of_birth,
                 s.gender,
                 s.department,
+                d.dept_name,
+                d.dept_code,
                 s.current_semester,
                 s.current_year,
                 s.parent_name,
                 s.parent_phone,
-                s.parent_email,
                 s.address,
                 s.status,
                 s.created_at,
                 s.class_id
             FROM students s
+            LEFT JOIN departments d ON s.department = d.dept_code
             WHERE s.status = 'active'
             ORDER BY s.register_number
         `);

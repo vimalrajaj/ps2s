@@ -63,7 +63,7 @@ router.post('/create-faculty', async (req, res) => {
 
         // Get department info
         const [departmentResult] = await req.dbPool.execute(
-            'SELECT id, dept_name FROM departments WHERE id = ?',
+            'SELECT id, dept_name, dept_code FROM departments WHERE id = ?',
             [department]
         );
 
@@ -75,10 +75,13 @@ router.post('/create-faculty', async (req, res) => {
         }
 
         const departmentName = departmentResult[0].dept_name;
+        const departmentCode = departmentResult[0].dept_code;
         const departmentId = departmentResult[0].id;
         const facultyPassword = password || faculty_code;
 
-        // Insert faculty with all form data (without date_of_birth and gender since they don't exist)
+        // Insert faculty with all form data, handle empty date_of_joining
+        const joiningDate = date_of_joining && date_of_joining.trim() !== '' ? date_of_joining : new Date().toISOString().split('T')[0];
+        
         await req.dbPool.execute(
             `INSERT INTO faculty (
                 faculty_code, first_name, last_name, email, phone,
@@ -87,8 +90,8 @@ router.post('/create-faculty', async (req, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
             [
                 faculty_code, first_name, last_name, email, phone,
-                departmentName, designation, qualification,
-                experience_years || 0, date_of_joining, facultyPassword
+                departmentCode, designation, qualification,
+                experience_years || 0, joiningDate, facultyPassword
             ]
         );
 
@@ -135,11 +138,13 @@ router.get('/faculty-list', async (req, res) => {
     try {
         const [faculty] = await req.dbPool.execute(`
             SELECT 
-                id, faculty_code, first_name, last_name, email, phone,
-                department, designation, qualification,
-                experience_years, date_of_joining, status, created_at
-            FROM faculty 
-            ORDER BY created_at DESC
+                f.id, f.faculty_code, f.first_name, f.last_name, f.email, f.phone,
+                f.department, f.designation, f.qualification,
+                f.experience_years, f.date_of_joining, f.status, f.created_at,
+                d.dept_name, d.dept_code
+            FROM faculty f
+            LEFT JOIN departments d ON f.department = d.dept_code
+            ORDER BY f.created_at DESC
         `);
 
         res.json({
@@ -158,9 +163,9 @@ router.get('/faculty-by-department/:departmentId', async (req, res) => {
     try {
         const { departmentId } = req.params;
         
-        // Get department name first
+        // Get department info first
         const [departmentResult] = await req.dbPool.execute(
-            'SELECT dept_name FROM departments WHERE id = ?',
+            'SELECT dept_name, dept_code FROM departments WHERE id = ?',
             [departmentId]
         );
 
@@ -172,10 +177,11 @@ router.get('/faculty-by-department/:departmentId', async (req, res) => {
         }
 
         const departmentName = departmentResult[0].dept_name;
+        const departmentCode = departmentResult[0].dept_code;
 
         const [faculty] = await req.dbPool.execute(
             'SELECT * FROM faculty WHERE department = ? AND status = "active" ORDER BY designation, first_name',
-            [departmentName]
+            [departmentCode]
         );
 
         res.json({
@@ -237,7 +243,7 @@ router.post('/assign-mentor', async (req, res) => {
             `SELECT c.*, ay.year_range, d.dept_name as department_name 
              FROM classes c 
              JOIN academic_years ay ON c.academic_year_id = ay.id 
-             JOIN departments d ON ay.department_id = d.id 
+             JOIN departments d ON c.department_id = d.id 
              WHERE c.id = ?`,
             [class_id]
         );
@@ -319,8 +325,8 @@ router.get('/mentor-assignments', async (req, res) => {
     try {
         const [assignments] = await req.dbPool.execute(`
             SELECT 
-                ma.id, ma.assigned_date, ma.status, ma.notes,
-                c.class_name, c.section, c.capacity, c.current_strength,
+                ma.id, ma.assignment_date, ma.status,
+                c.class_name, c.section, c.total_students,
                 ay.year_range,
                 d.dept_name as department_name,
                 f.first_name, f.last_name, f.faculty_code, f.email, f.phone, f.designation,
@@ -328,7 +334,7 @@ router.get('/mentor-assignments', async (req, res) => {
             FROM mentor_assignments ma
             JOIN classes c ON ma.class_id = c.id
             JOIN academic_years ay ON c.academic_year_id = ay.id
-            JOIN departments d ON ay.department_id = d.id
+            JOIN departments d ON c.department_id = d.id
             JOIN faculty f ON ma.faculty_id = f.id
             WHERE ma.status = 'active'
             ORDER BY d.dept_name, ay.year_range, c.class_name, c.section
@@ -390,8 +396,11 @@ router.get('/faculty/all-details', async (req, res) => {
                 f.experience_years,
                 f.date_of_joining,
                 f.status,
-                f.created_at
+                f.created_at,
+                d.dept_name,
+                d.dept_code
             FROM faculty f
+            LEFT JOIN departments d ON f.department = d.dept_code
             WHERE f.status = 'active'
             ORDER BY f.faculty_code
         `);
@@ -456,6 +465,7 @@ router.get('/faculty/dashboard-stats', async (req, res) => {
         let averageCGPA = 0;
 
         res.json({
+            success: true,
             totalStudents,
             totalCertificates,
             pendingVerifications,
@@ -503,7 +513,7 @@ router.get('/faculty/my-students', async (req, res) => {
                 c.id as class_id,
                 c.class_name,
                 CONCAT(c.class_name, ' - Section ', c.section) as course_name,
-                d.dept_name as dept_name,
+                    d.dept_name as dept_name,
                 0 as total_certificates
             FROM mentor_assignments ma
             JOIN classes c ON ma.class_id = c.id
@@ -548,10 +558,10 @@ router.get('/faculty/my-classes', async (req, res) => {
                 c.current_strength as current_students,
                 c.id as course_id,
                 CONCAT(c.class_name, ' - Section ', c.section) as course_name,
-                d.dept_name as dept_name,
+                    d.dept_name as dept_name,
                 ay.year_range as year_name,
                 1 as current_semester,
-                ma.assigned_date,
+                ma.assignment_date,
                 ma.notes
             FROM mentor_assignments ma
             JOIN classes c ON ma.class_id = c.id
@@ -889,7 +899,7 @@ router.post('/faculty/add-internal-assessment', requireAuth, requireRole(['facul
         // Insert initial marks entries for all students
         for (const student of students) {
             await req.dbPool.execute(
-                `INSERT INTO student_marks (student_id, internal_assessment_id, marks_obtained, attendance_status)
+                `INSERT INTO student_marks (student_id, internal_assessment_id, marks_obtained, attendance)
                  VALUES (?, ?, 0, 'Present')`,
                 [student.id, result.insertId]
             );
@@ -999,7 +1009,7 @@ router.get('/faculty/student-marks', requireAuth, requireRole(['faculty']), asyn
                 s.last_name,
                 s.register_number,
                 sm.marks_obtained,
-                sm.attendance_status,
+                sm.attendance,
                 sm.remarks,
                 ia.id as internal_assessment_id
              FROM students s
@@ -1034,11 +1044,11 @@ router.post('/faculty/save-student-marks', requireAuth, requireRole(['faculty'])
         for (const markEntry of marksData) {
             await req.dbPool.execute(
                 `INSERT INTO student_marks 
-                 (student_id, internal_assessment_id, marks_obtained, attendance_status, remarks)
+                 (student_id, internal_assessment_id, marks_obtained, attendance, remarks)
                  VALUES (?, ?, ?, ?, ?)
                  ON DUPLICATE KEY UPDATE
                  marks_obtained = VALUES(marks_obtained),
-                 attendance_status = VALUES(attendance_status),
+                 attendance = VALUES(attendance),
                  remarks = VALUES(remarks),
                  updated_at = NOW()`,
                 [
@@ -1239,9 +1249,9 @@ router.post('/faculty/upload-marks', requireAuth, requireRole(['faculty']), asyn
                 // Insert or update student marks
                 console.log(`📝 Saving marks: student_id=${student[0].id}, ia_id=${iaId}, marks=${record.marks}`);
                 await req.dbPool.execute(
-                    `INSERT INTO student_marks (student_id, internal_assessment_id, marks_obtained, attendance_status)
+                    `INSERT INTO student_marks (student_id, internal_assessment_id, marks_obtained, attendance)
                      VALUES (?, ?, ?, 'Present') 
-                     ON DUPLICATE KEY UPDATE marks_obtained = ?, attendance_status = 'Present'`,
+                     ON DUPLICATE KEY UPDATE marks_obtained = ?, attendance = 'Present'`,
                     [student[0].id, iaId, record.marks, record.marks]
                 );
                 

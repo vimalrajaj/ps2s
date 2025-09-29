@@ -261,9 +261,10 @@ body {
 /* Enhanced Statistics Grid */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 2rem;
     margin-bottom: 3rem;
+    align-items: stretch;
 }
 
 .stats-cards {
@@ -943,15 +944,21 @@ body {
 
 @media (max-width: 480px) {
     .main-content {
-        padding: 0.5rem;
+        padding: 1rem;
     }
     
     .header {
         padding: 1rem;
     }
     
+    .header h1 {
+        font-size: 1.5rem;
+        text-align: center;
+    }
+    
     .stat-card {
         padding: 1.5rem;
+        text-align: center;
     }
     
     .stat-number {
@@ -960,6 +967,16 @@ body {
     
     .form-container {
         padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    .form-grid {
+        gap: 0.75rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
 }
 

@@ -459,8 +459,8 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="classCapacity" class="form-label">Capacity</label>
-                                    <input type="number" class="form-control" id="classCapacity" value="60" min="1" max="200">
+                                    <label for="roomNumber" class="form-label">Room Number</label>
+                                    <input type="text" class="form-control" id="roomNumber" placeholder="e.g., 101, A-205">
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -661,7 +661,7 @@
             let html = '<div class="class-grid">';
             classes.forEach(cls => {
                 const capacity = cls.capacity || 60;
-                const current = cls.current_strength || 0;
+                const current = cls.student_count || 0;
                 const percentage = (current / capacity) * 100;
                 const available = capacity - current;
                 
@@ -773,8 +773,18 @@
             
             const className = document.getElementById('className').value;
             const section = document.getElementById('classSection').value;
-            const capacity = document.getElementById('classCapacity').value || 60;
+            const roomNumber = document.getElementById('roomNumber').value;
             const teacher = document.getElementById('classTeacher').value;
+            
+            if (!className || !section) {
+                showNotification('Class name and section are required', 'error');
+                return;
+            }
+            
+            if (!currentDepartmentId) {
+                showNotification('Department context not found. Please refresh the page.', 'error');
+                return;
+            }
             
             try {
                 showLoading(true);
@@ -786,8 +796,9 @@
                     body: JSON.stringify({
                         class_name: className,
                         section: section,
-                        capacity: capacity,
-                        class_teacher: teacher || null
+                        room_number: roomNumber || null,
+                        class_teacher: teacher || null,
+                        department_id: currentDepartmentId
                     })
                 });
                 
@@ -797,7 +808,6 @@
                     showNotification('Class added successfully!', 'success');
                     bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
                     document.getElementById('addClassForm').reset();
-                    document.getElementById('classCapacity').value = 60; // Reset capacity to default
                     await loadClasses(currentAcademicYearId); // Reload classes
                     loadClassCount(currentAcademicYearId); // Update class count in sidebar
                 } else {

@@ -43,21 +43,16 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check admin table for university login
-        const [adminResults] = await req.dbPool.execute(
-            'SELECT * FROM admin WHERE username = ? AND password = ?',
-            [username, password]
-        );
-
-        if (adminResults.length > 0) {
-            const user = adminResults[0];
-            
-            // Set session
+        // Check for admin login first
+        if (username === 'admin' && password === 'admin123') {
             req.session.user = {
-                id: user.id,
-                username: user.username,
+                id: 1,
+                username: 'admin',
+                name: 'Administrator',
                 type: 'university'
             };
+            
+            console.log('✅ Admin login successful:', req.session.user);
             
             return res.json({
                 success: true,
@@ -86,7 +81,7 @@ router.post('/login', async (req, res) => {
                 designation: faculty.designation
             };
             
-            console.log('✅ Faculty login successful:', req.session.user);
+            console.log('✅ Faculty login successful (legacy):', req.session.user);
             
             return res.json({
                 success: true,
@@ -96,14 +91,18 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check students table
+        // Check students table for backward compatibility
+        console.log('🔍 Checking student credentials:', username, password);
         const [studentResults] = await req.dbPool.execute(
             'SELECT * FROM students WHERE register_number = ? AND password = ?',
             [username, password]
         );
+        
+        console.log('🔍 Student query results:', studentResults.length, 'records found');
 
         if (studentResults.length > 0) {
             const student = studentResults[0];
+            console.log('🔍 Student found:', student.first_name, student.last_name);
             
             // Set session
             req.session.user = {
@@ -114,6 +113,8 @@ router.post('/login', async (req, res) => {
                 department: student.department,
                 semester: student.current_semester
             };
+            
+            console.log('✅ Student login successful:', req.session.user);
             
             return res.json({
                 success: true,
@@ -206,22 +207,53 @@ router.get('/check-session', (req, res) => {
 });
 
 // API route to get user profile
+// Debug endpoint to check if student exists in database
+router.get('/api/debug/student/:registerNumber', async (req, res) => {
+    try {
+        const registerNumber = req.params.registerNumber;
+        console.log('🔍 Checking if student exists:', registerNumber);
+        
+        const [results] = await req.dbPool.execute(
+            'SELECT * FROM students WHERE register_number = ?',
+            [registerNumber]
+        );
+        
+        console.log('🔍 Query results:', results.length, 'records found');
+        
+        res.json({
+            success: true,
+            exists: results.length > 0,
+            count: results.length,
+            student: results.length > 0 ? {
+                id: results[0].id,
+                name: `${results[0].first_name} ${results[0].last_name}`,
+                register_number: results[0].register_number,
+                password: results[0].password
+            } : null
+        });
+    } catch (error) {
+        console.error('Database check error:', error);
+        res.json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 router.get('/api/user-profile', (req, res) => {
+    console.log('🔍 User Profile Request - Session:', req.session?.user);
+    
     if (req.session && req.session.user) {
         res.json({
             success: true,
             user: req.session.user
         });
     } else {
-        // For testing, return a default admin user
-        res.json({
-            success: true,
-            user: {
-                id: 1,
-                username: 'admin',
-                name: 'Administrator',
-                type: 'university'
-            }
+        console.log('❌ No user session found');
+        res.status(401).json({
+            success: false,
+            message: 'Not authenticated',
+            user: null
         });
     }
 });

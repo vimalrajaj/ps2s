@@ -91,13 +91,15 @@ app.get('/sample_marks_upload.xlsx', (req, res) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// File upload middleware
+// File upload middleware for Excel files (using express-fileupload)
 const fileUpload = require('express-fileupload');
-app.use(fileUpload({
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
-}));
 
-// Configure multer for file uploads
+// Apply express-fileupload only to specific routes that need it
+const excelUploadMiddleware = fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+});
+
+// Configure multer for certificate uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'uploads/');
@@ -107,7 +109,18 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+    fileFilter: function(req, file, cb) {
+        // Allow image files for certificates
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed for certificate uploads'));
+        }
+    }
+});
 
 // Create uploads directory if it doesn't exist
 if (!fs.existsSync('uploads')) {
@@ -137,6 +150,8 @@ app.use('/api', (req, res, next) => {
     next();
 }, studentRoutes);
 
+// Faculty routes with Excel upload middleware for specific route
+app.use('/api/faculty/upload-marks', excelUploadMiddleware);
 app.use('/api', (req, res, next) => {
     req.dbPool = dbPool;
     next();

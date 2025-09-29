@@ -7,6 +7,7 @@ let facultyList = [];
 let classList = [];
 let dashboardCache = null;
 let cacheTime = 0;
+let currentDepartmentId = null; // Track current department context
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -548,7 +549,8 @@ function displayFacultyList(faculty) {
     let html = '';
     faculty.forEach(fac => {
         const joiningDate = fac.date_of_joining ? new Date(fac.date_of_joining).toLocaleDateString() : 'N/A';
-        const dateOfBirth = fac.date_of_birth ? new Date(fac.date_of_birth).toLocaleDateString() : 'N/A';
+        // const dateOfBirth = fac.date_of_birth ? new Date(fac.date_of_birth).toLocaleDateString() : 'N/A'; // Faculty table doesn't have date_of_birth
+        const dateOfBirth = 'N/A'; // Faculty table doesn't have date_of_birth field
         
         html += `
             <tr>
@@ -631,9 +633,9 @@ async function loadDepartmentOptions(selectId) {
                     select.innerHTML += '<option value="" disabled>No departments available - Create departments first</option>';
                 } else {
                     data.departments.forEach(dept => {
-                        const option = `<option value="${dept.id}">${dept.name} (${dept.code})</option>`;
+                        const option = `<option value="${dept.id}">${dept.dept_name || dept.name} (${dept.dept_code || dept.code})</option>`;
                         select.innerHTML += option;
-                        console.log('DEBUG: Added department option:', dept.name);
+                        console.log('DEBUG: Added department option:', dept.dept_name || dept.name);
                     });
                 }
             } else {
@@ -657,7 +659,7 @@ function populateDepartmentSelect(selectId) {
 
     select.innerHTML = '<option value="">Select Department</option>';
     departments.forEach(dept => {
-        select.innerHTML += `<option value="${dept.dept_id}">${dept.dept_name}</option>`;
+        select.innerHTML += `<option value="${dept.id}">${dept.dept_name}</option>`;
     });
 }
 
@@ -787,7 +789,7 @@ async function handleStudentSubmit(e) {
             current_year: parseInt(document.getElementById('currentYear').value) || 1,
             parent_name: document.getElementById('parentName').value,
             parent_phone: document.getElementById('parentPhone').value,
-            parent_email: document.getElementById('parentEmail').value,
+            // parent_email field removed - not in database schema
             address: document.getElementById('address').value,
             password: document.getElementById('password').value
         };
@@ -1291,7 +1293,7 @@ function displayDepartmentTree(departments) {
                     <div>
                         <h6 class="mb-1">
                             <i class="fas fa-building text-primary me-2"></i>
-                            ${dept.name} (${dept.code})
+                            ${dept.dept_name || dept.name} (${dept.dept_code || dept.code})
                         </h6>
                         <p class="mb-1 text-muted">${dept.description || 'No description available'}</p>
                         <small class="text-muted">
@@ -1306,7 +1308,7 @@ function displayDepartmentTree(departments) {
                         <button class="btn btn-outline-primary btn-sm" onclick="editDepartment(${dept.id})" title="Edit Department">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="deleteDepartment(${dept.id}, '${dept.name}')" title="Delete Department">
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteDepartment(${dept.id}, '${dept.dept_name || dept.name}')" title="Delete Department">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -1337,6 +1339,9 @@ function openDepartmentDetailsPage(deptId) {
 }
 
 async function viewDepartmentDetails(deptId) {
+    // Set current department context
+    currentDepartmentId = deptId;
+    
     try {
         showLoading(true);
         const response = await fetch(`/api/departments/${deptId}/details`);
@@ -1424,10 +1429,10 @@ function displayDepartmentDetailsModal(department, academicYears) {
                                     Created: ${new Date(year.created_at).toLocaleDateString()}
                                 </small>
                             </p>
-                            <button class="btn btn-primary btn-sm me-2" onclick="viewAcademicYearClasses(${year.id}, '${year.year_range}')">
+                            <button class="btn btn-primary btn-sm me-2" onclick="viewAcademicYearClasses(${year.id}, '${year.year_range}', currentDepartmentId)">
                                 <i class="fas fa-list"></i> View Classes
                             </button>
-                            <button class="btn btn-success btn-sm" onclick="showAddClassModal(${year.id}, '${year.year_range}')">
+                            <button class="btn btn-success btn-sm" onclick="showAddClassModal(${year.id}, '${year.year_range}', currentDepartmentId)">
                                 <i class="fas fa-plus"></i> Add Class
                             </button>
                         </div>
@@ -1795,7 +1800,7 @@ function displayStudentDetailsModal(student) {
                                 <table class="table table-borderless">
                                     <tr><th>Parent Name:</th><td>${student.parent_name || 'N/A'}</td></tr>
                                     <tr><th>Parent Phone:</th><td>${student.parent_phone || 'N/A'}</td></tr>
-                                    <tr><th>Parent Email:</th><td>${student.parent_email || 'N/A'}</td></tr>
+                                    <!-- <tr><th>Parent Email:</th><td>${student.parent_email || 'N/A'}</td></tr> Column doesn't exist -->
                                 </table>
                             </div>
                         </div>
@@ -1971,8 +1976,8 @@ function viewFacultyDetails(facultyId) {
                                         <tr><td><strong>Name:</strong></td><td>${faculty.first_name} ${faculty.last_name}</td></tr>
                                         <tr><td><strong>Email:</strong></td><td>${faculty.email}</td></tr>
                                         <tr><td><strong>Phone:</strong></td><td>${faculty.phone || 'N/A'}</td></tr>
-                                        <tr><td><strong>Date of Birth:</strong></td><td>${faculty.date_of_birth ? new Date(faculty.date_of_birth).toLocaleDateString() : 'N/A'}</td></tr>
-                                        <tr><td><strong>Gender:</strong></td><td>${faculty.gender || 'N/A'}</td></tr>
+                                        <!-- <tr><td><strong>Date of Birth:</strong></td><td>${faculty.date_of_birth ? new Date(faculty.date_of_birth).toLocaleDateString() : 'N/A'}</td></tr> Faculty table doesn't have date_of_birth -->
+                                        <!-- <tr><td><strong>Gender:</strong></td><td>${faculty.gender || 'N/A'}</td></tr> Faculty table doesn't have gender -->
                                     </table>
                                 </div>
                                 <div class="col-md-6">
@@ -2057,7 +2062,10 @@ async function createAcademicYear(departmentId) {
 }
 
 // View classes for an academic year
-async function viewAcademicYearClasses(academicYearId, yearRange) {
+async function viewAcademicYearClasses(academicYearId, yearRange, departmentId = null) {
+    // Store department context for class creation
+    if (departmentId) currentDepartmentId = departmentId;
+    
     try {
         showLoading(true);
         const response = await fetch(`/api/academic-years/${academicYearId}/classes`);
@@ -2094,7 +2102,7 @@ function displayClassesModal(classes, yearRange, academicYearId) {
                                 <h6>Existing Classes</h6>
                             </div>
                             <div class="col-md-4 text-end">
-                                <button class="btn btn-success btn-sm" onclick="showAddClassModal(${academicYearId}, '${yearRange}')">
+                                <button class="btn btn-success btn-sm" onclick="showAddClassModal(${academicYearId}, '${yearRange}', currentDepartmentId)">
                                     <i class="fas fa-plus"></i> Add New Class
                                 </button>
                             </div>
@@ -2163,7 +2171,23 @@ function generateClassesHTML(classes) {
 }
 
 // Show add class modal
-function showAddClassModal(academicYearId, yearRange) {
+function showAddClassModal(academicYearId, yearRange, departmentId = null) {
+    // Set department context if provided
+    if (departmentId) currentDepartmentId = departmentId;
+    
+    console.log('🏫 Opening add class modal for academic year:', academicYearId, 'department:', currentDepartmentId);
+    console.log('🔍 Modal Debug - departmentId param:', departmentId);
+    console.log('🔍 Modal Debug - currentDepartmentId before:', currentDepartmentId);
+    
+    // Ensure we have a valid department ID
+    const finalDeptId = departmentId || currentDepartmentId;
+    console.log('🔍 Final department ID to use:', finalDeptId);
+    
+    if (!finalDeptId) {
+        showNotification('Department context not found. Please try again from department details.', 'error');
+        return;
+    }
+    
     const modalContent = `
         <div class="modal fade" id="addClassModal" tabindex="-1">
             <div class="modal-dialog">
@@ -2178,8 +2202,8 @@ function showAddClassModal(academicYearId, yearRange) {
                         <form id="addClassForm">
                             <div class="mb-3">
                                 <label for="className" class="form-label">Class Name *</label>
-                                <input type="text" class="form-control" id="className" placeholder="e.g., CSE, ECE, MECH" required>
-                                <div class="form-text">Enter the department abbreviation or course name</div>
+                                <input type="text" class="form-control" id="className" placeholder="e.g., First Year, Second Year" required>
+                                <div class="form-text">Enter the class/year name</div>
                             </div>
                             <div class="mb-3">
                                 <label for="classSection" class="form-label">Section *</label>
@@ -2187,9 +2211,9 @@ function showAddClassModal(academicYearId, yearRange) {
                                 <div class="form-text">Enter the section letter or number</div>
                             </div>
                             <div class="mb-3">
-                                <label for="classCapacity" class="form-label">Capacity</label>
-                                <input type="number" class="form-control" id="classCapacity" value="60" min="1" max="200">
-                                <div class="form-text">Maximum number of students</div>
+                                <label for="roomNumber" class="form-label">Room Number</label>
+                                <input type="text" class="form-control" id="roomNumber" placeholder="e.g., 101, A-205" >
+                                <div class="form-text">Enter the room number (optional)</div>
                             </div>
                             <div class="mb-3">
                                 <label for="classTeacher" class="form-label">Class Teacher</label>
@@ -2199,7 +2223,7 @@ function showAddClassModal(academicYearId, yearRange) {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-success" onclick="createClass(${academicYearId}, '${yearRange}')">
+                        <button type="button" class="btn btn-success" id="createClassBtn" data-academic-year="${academicYearId}" data-year-range="${yearRange}" data-department-id="${finalDeptId}">
                             <i class="fas fa-plus"></i> Create Class
                         </button>
                     </div>
@@ -2220,19 +2244,50 @@ function showAddClassModal(academicYearId, yearRange) {
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('addClassModal'));
     modal.show();
+    
+    // Add event listener for the create button after modal is shown
+    document.getElementById('createClassBtn').addEventListener('click', function() {
+        const academicYearId = this.getAttribute('data-academic-year');
+        const yearRange = this.getAttribute('data-year-range');
+        const departmentId = this.getAttribute('data-department-id');
+        
+        console.log('🎯 Button clicked with data attributes:', { academicYearId, yearRange, departmentId });
+        createClass(academicYearId, yearRange, parseInt(departmentId));
+    });
 }
 
 // Create class
-async function createClass(academicYearId, yearRange) {
-    const className = document.getElementById('className').value.trim();
-    const section = document.getElementById('classSection').value.trim();
-    const capacity = document.getElementById('classCapacity').value;
-    const classTeacher = document.getElementById('classTeacher').value.trim();
+async function createClass(academicYearId, yearRange, departmentId = null) {
+    console.log('🚀 createClass called with:', { academicYearId, yearRange, departmentId });
+    console.log('🔍 Global currentDepartmentId:', currentDepartmentId);
+    
+    // Use the passed department ID or fallback to currentDepartmentId
+    const deptId = departmentId || currentDepartmentId;
+    console.log('🎯 Final deptId to use:', deptId);
+    const className = document.getElementById('className')?.value?.trim();
+    const section = document.getElementById('classSection')?.value?.trim();
+    const roomNumber = document.getElementById('roomNumber')?.value?.trim();
+    const classTeacher = document.getElementById('classTeacher')?.value?.trim();
+    
+    console.log('📝 Form values:', { className, section, roomNumber, classTeacher });
     
     if (!className || !section) {
         showNotification('Class name and section are required', 'error');
         return;
     }
+    
+    if (!deptId || deptId === 'null' || deptId === 'undefined') {
+        showNotification('Department context not found. Please refresh the page and try again from department details.', 'error');
+        console.error('❌ Invalid department ID:', deptId);
+        return;
+    }
+    
+    console.log('🏫 Creating class:', { className, section, roomNumber, classTeacher, deptId });
+    
+    // Additional debug info
+    console.log('🔍 Debug - deptId type:', typeof deptId);
+    console.log('🔍 Debug - deptId value:', deptId);
+    console.log('🔍 Debug - Is deptId truthy?', !!deptId);
     
     try {
         showLoading(true);
@@ -2242,10 +2297,11 @@ async function createClass(academicYearId, yearRange) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                class_name: className.toUpperCase(),
+                class_name: className,
                 section: section.toUpperCase(),
-                capacity: parseInt(capacity) || 60,
-                class_teacher: classTeacher || null
+                room_number: roomNumber || null,
+                class_teacher: classTeacher || null,
+                department_id: deptId
             })
         });
         
@@ -2374,10 +2430,10 @@ async function loadSubjectDepartments() {
         departments.forEach(dept => {
             departmentsHtml += `
                 <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
-                        onclick="openDepartmentSubjects(${dept.id}, '${dept.name}', '${dept.code}')">
+                        onclick="openDepartmentSubjects(${dept.id}, '${dept.dept_name || dept.name}', '${dept.dept_code || dept.code}')">
                     <div>
-                        <h6 class="mb-1">${dept.name}</h6>
-                        <small class="text-muted">${dept.code}</small>
+                        <h6 class="mb-1">${dept.dept_name || dept.name}</h6>
+                        <small class="text-muted">${dept.dept_code || dept.code}</small>
                     </div>
                     <i class="fas fa-chevron-right"></i>
                 </button>
@@ -2611,7 +2667,7 @@ async function loadDepartmentFaculty() {
         // Filter faculty by department
         let departmentFaculty = facultyList.filter(faculty => {
             const selectedDept = departments.find(d => d.id == departmentId);
-            return selectedDept && faculty.department === selectedDept.name;
+            return selectedDept && faculty.department === (selectedDept.dept_code || selectedDept.code);
         });
         
         if (departmentFaculty.length === 0) {
@@ -2799,7 +2855,7 @@ function initializeSubjectsSection() {
             // Populate new subject department dropdown
             newSubjectDeptSelect.innerHTML = '<option value="">Select Department</option>';
             departments.forEach(dept => {
-                newSubjectDeptSelect.innerHTML += `<option value="${dept.id}">${dept.name} (${dept.code})</option>`;
+                newSubjectDeptSelect.innerHTML += `<option value="${dept.id}">${dept.dept_name || dept.name} (${dept.dept_code || dept.code})</option>`;
             });
         }
         

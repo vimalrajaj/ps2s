@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { margin: 5px; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Test</h1>
+    
+    <div class="test-section">
+        <h2>Direct Login Tests</h2>
+        <button onclick="testLogin('faculty')">Test Faculty Login</button>
+        <button onclick="testLogin('student')">Test Student Login</button>
+        <button onclick="testLogin('university')">Test University Login</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Session Check</h2>
+        <button onclick="checkSession()">Check Current Session</button>
+        <div id="sessionResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Faculty Dashboard Stats</h2>
+        <button onclick="testFacultyStats()">Get Faculty Stats</button>
+        <div id="statsResult" class="result"></div>
+    </div>
+
+    <script>
+        async function testLogin(userType) {
+            const credentials = {
+                student: { username: '2024CSE001', password: '12345678' },
+                faculty: { username: 'CSE001', password: '12345678' },
+                university: { username: 'admin', password: 'admin123' }
+            };
+
+            const loginData = credentials[userType];
+            const resultDiv = document.getElementById('loginResult');
+            
+            try {
+                console.log(`Testing ${userType} login with:`, loginData);
+                
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                });
+
+                const data = await response.json();
+                console.log('Login response:', data);
+                
+                resultDiv.innerHTML = `
+                    <h3>${userType.toUpperCase()} Login Result:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>Message:</strong> ${data.message}</p>
+                    <p><strong>User:</strong> ${JSON.stringify(data.user, null, 2)}</p>
+                    <p><strong>Redirect:</strong> ${data.redirectUrl}</p>
+                `;
+                
+                if (data.success) {
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                resultDiv.innerHTML = `<h3>Error:</h3><p>${error.message}</p>`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+
+        async function checkSession() {
+            const resultDiv = document.getElementById('sessionResult');
+            
+            try {
+                const response = await fetch('/api/user-profile');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>Session Status:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>User:</strong> ${JSON.stringify(data.user, null, 2)}</p>
+                `;
+                
+                if (data.success) {
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+                resultDiv.innerHTML = `<h3>Error:</h3><p>${error.message}</p>`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+
+        async function testFacultyStats() {
+            const resultDiv = document.getElementById('statsResult');
+            
+            try {
+                const response = await fetch('/api/faculty/dashboard-stats');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>Faculty Stats Result:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>Message:</strong> ${data.message}</p>
+                    <p><strong>Data:</strong> ${JSON.stringify(data, null, 2)}</p>
+                `;
+                
+                if (response.ok) {
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (error) {
+                console.error('Faculty stats error:', error);
+                resultDiv.innerHTML = `<h3>Error:</h3><p>${error.message}</p>`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+    </script>
+</body>
+</html>

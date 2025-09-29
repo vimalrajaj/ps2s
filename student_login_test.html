@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Student Login Debug Test</h1>
+    
+    <button onclick="testStudentLogin()">Test Student Login (2024CSE001)</button>
+    <button onclick="checkSession()">Check Session After Login</button>
+    
+    <div id="result" class="result"></div>
+
+    <script>
+        async function testStudentLogin() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testing student login...');
+                
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: '2024CSE001',
+                        password: '12345678'
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Login response:', data);
+                
+                resultDiv.innerHTML = `
+                    <h3>Student Login Test Result:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>Message:</strong> ${data.message}</p>
+                    <p><strong>User:</strong> ${JSON.stringify(data.user, null, 2)}</p>
+                    <p><strong>Redirect URL:</strong> ${data.redirectUrl}</p>
+                `;
+                
+                if (data.success) {
+                    resultDiv.style.background = '#d4edda';
+                    // Don't automatically redirect, just show success 
+                } else {
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                resultDiv.innerHTML = `<h3>Error:</h3><p>${error.message}</p>`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+        
+        async function checkSession() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/user-profile');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>Session Check Result:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>User:</strong> ${JSON.stringify(data.user, null, 2)}</p>
+                `;
+                
+                if (data.success) {
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+                resultDiv.innerHTML = `<h3>Error:</h3><p>${error.message}</p>`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+    </script>
+</body>
+</html>

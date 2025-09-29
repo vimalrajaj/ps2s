@@ -147,13 +147,32 @@ function updateUserInterface() {
     // Update dashboard stats with real data
     updateDashboardStats();
     
-    // Update profile image if available
+    // Update profile image with default if not available
     const profileImages = document.querySelectorAll('.profile-img, .user-avatar');
     profileImages.forEach(img => {
         if (currentUser.profileImage) {
             img.style.backgroundImage = `url(${currentUser.profileImage})`;
             img.style.backgroundSize = 'cover';
             img.style.backgroundPosition = 'center';
+            img.innerHTML = ''; // Clear placeholder text
+        } else {
+            // Generate initials from user name
+            const initials = (currentUser.name || currentUser.username || 'ST')
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+            
+            // Set a default gradient background with initials
+            img.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            img.style.color = 'white';
+            img.style.display = 'flex';
+            img.style.alignItems = 'center';
+            img.style.justifyContent = 'center';
+            img.style.fontWeight = 'bold';
+            img.style.fontSize = '14px';
+            img.innerHTML = initials;
         }
     });
 }
@@ -379,7 +398,7 @@ function displayStudentProfileModal(profile) {
                                 <h6>Parent Information</h6>
                                 <p><strong>Parent Name:</strong> ${profile.parent_name || 'Not provided'}</p>
                                 <p><strong>Parent Phone:</strong> ${profile.parent_phone || 'Not provided'}</p>
-                                <p><strong>Parent Email:</strong> ${profile.parent_email || 'Not provided'}</p>
+                                <!-- <p><strong>Parent Email:</strong> ${profile.parent_email || 'Not provided'}</p> Column doesn't exist -->
                             </div>
                             <div class="col-md-6">
                                 <h6>Other Information</h6>

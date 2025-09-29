@@ -239,7 +239,7 @@
             document.getElementById('graduatedStudentsCount').textContent = 
                 allStudents.filter(s => s.enrollment_status === 'Graduated').length;
             
-            const uniqueDepts = [...new Set(allStudents.map(s => s.dept_code))];
+            const uniqueDepts = [...new Set(allStudents.map(s => s.dept_code || s.department))];
             document.getElementById('departmentsCount').textContent = uniqueDepts.length;
         }
 
@@ -265,7 +265,7 @@
             tbody.innerHTML = studentsToShow.map((student, index) => {
                 const rowIndex = startIndex + index + 1;
                 const initials = `${student.first_name.charAt(0)}${student.last_name.charAt(0)}`;
-                const deptClass = deptColors[student.dept_code] || 'bg-secondary';
+                const deptClass = deptColors[student.dept_code || student.department] || 'bg-secondary';
                 
                 return `
                     <tr>
@@ -399,7 +399,7 @@
                 'Phone': student.phone || 'N/A',
                 'Parent Name': student.parent_name || 'N/A',
                 'Parent Phone': student.parent_phone || 'N/A',
-                'Parent Email': student.parent_email || 'N/A',
+                // 'Parent Email': student.parent_email || 'N/A', // Column doesn't exist in database
                 'Status': student.status || 'Active',
                 'Created Date': formatDate(student.created_at),
                 'Date of Birth': formatDate(student.date_of_birth),

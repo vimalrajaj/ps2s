@@ -730,8 +730,8 @@ function displayProfileModal(profile) {
                                 <p><strong>Faculty Code:</strong> ${profile.faculty_code}</p>
                                 <p><strong>Email:</strong> ${profile.email}</p>
                                 <p><strong>Phone:</strong> ${profile.phone || 'Not provided'}</p>
-                                <p><strong>Gender:</strong> ${profile.gender || 'Not provided'}</p>
-                                <p><strong>Date of Birth:</strong> ${profile.date_of_birth || 'Not provided'}</p>
+                                <!-- <p><strong>Gender:</strong> ${profile.gender || 'Not provided'}</p> Faculty table doesn't have gender -->
+                                <!-- <p><strong>Date of Birth:</strong> ${profile.date_of_birth || 'Not provided'}</p> Faculty table doesn't have date_of_birth -->
                             </div>
                             <div class="col-md-6">
                                 <h6>Professional Information</h6>
@@ -1078,8 +1078,8 @@ function displayStudentMarks(students, subjectName, iaNumber) {
                         data-student-id="${student.student_id}"
                         data-ia-id="${student.internal_assessment_id}"
                         onchange="updateAttendance(this)">
-                    <option value="Present" ${student.attendance_status === 'Present' ? 'selected' : ''}>Present</option>
-                    <option value="Absent" ${student.attendance_status === 'Absent' ? 'selected' : ''}>Absent</option>
+                    <option value="Present" ${student.attendance === 'Present' ? 'selected' : ''}>Present</option>
+                    <option value="Absent" ${student.attendance === 'Absent' ? 'selected' : ''}>Absent</option>
                 </select>
             </td>
             <td>
