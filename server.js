@@ -17,20 +17,26 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database configuration using environment variables
+// Database configuration using environment variables (Railway compatible)
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'university_management',
-  port: process.env.DB_PORT || 3306,
+  host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
+  user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
+  password: process.env.MYSQLPASSWORD || process.env.DB_PASS || '',
+  database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'university_management',
+  port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  acquireTimeout: 60000,
+  timeout: 60000,
+  reconnect: true
 };
 
 // Create database connection pool
 const dbPool = mysql.createPool(dbConfig);
+
+// Initialize database (for Railway deployment)
+const { initializeDatabase } = require('./db-init');
 
 // Basic database connection test
 async function testDatabaseConnection() {
@@ -38,6 +44,11 @@ async function testDatabaseConnection() {
     const connection = await dbPool.getConnection();
     console.log('✅ Database connected successfully!');
     connection.release();
+    
+    // Initialize database if needed (for Railway)
+    if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
+      await initializeDatabase();
+    }
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
   }

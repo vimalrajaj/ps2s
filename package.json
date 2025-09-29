@@ -1,13 +1,19 @@
 {
-  "name": "certificate-verification",
+  "name": "university-management-system",
   "version": "1.0.0",
-  "description": "Certificate verification and OCR URL extraction utility",
+  "description": "Complete University Management System with Student, Faculty and Admin portals",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo 'No build step required'",
     "test-url-extraction": "node certificate_verification/test_url_extraction.js"
   },
-  "author": "",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "author": "Sanjay6383",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.12.2",
