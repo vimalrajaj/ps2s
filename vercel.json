@@ -49,6 +49,6 @@
     }
   ],
   "env": {
-    "BACKEND_URL": "https://your-render-app.onrender.com"
+    "BACKEND_URL": "https://ps2s.onrender.com"
   }
 }

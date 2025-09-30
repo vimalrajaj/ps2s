@@ -4,7 +4,7 @@ const API_CONFIG = {
     baseURL: 'http://localhost:3000'
   },
   production: {
-    baseURL: 'https://your-render-app.onrender.com'
+    baseURL: 'https://ps2s.onrender.com'
   }
 };
 
