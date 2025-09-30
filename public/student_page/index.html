@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - University Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>UniPortal</span>
+            </div>
+            
+            <div class="nav-menu">
+                <div class="nav-item">
+                    <i class="fas fa-bell notification-icon" onclick="toggleNotifications()"></i>
+                    <span class="notification-badge" id="notificationBadge">3</span>
+                    
+                    <!-- Notification Dropdown -->
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="notification-header">
+                            <h3>Notifications</h3>
+                            <span class="mark-all-read">Mark all as read</span>
+                        </div>
+                        <div class="notification-list">
+                            <div class="notification-item unread">
+                                <i class="fas fa-calendar"></i>
+                                <div class="notification-content">
+                                    <p>Assignment deadline approaching</p>
+                                    <span class="notification-time">2 hours ago</span>
+                                </div>
+                            </div>
+                            <div class="notification-item unread">
+                                <i class="fas fa-certificate"></i>
+                                <div class="notification-content">
+                                    <p>Certificate verification completed</p>
+                                    <span class="notification-time">1 day ago</span>
+                                </div>
+                            </div>
+                            <div class="notification-item">
+                                <i class="fas fa-bullhorn"></i>
+                                <div class="notification-content">
+                                    <p>New announcement: Tech Fest 2025</p>
+                                    <span class="notification-time">2 days ago</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="nav-item profile-menu">
+                    <img src="https://via.placeholder.com/40x40/4f46e5/ffffff?text=JD" alt="Profile" class="profile-img" onclick="toggleProfileMenu()">
+                    
+                    <!-- Profile Dropdown -->
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <div class="profile-header">
+                            <img src="https://via.placeholder.com/60x60/4f46e5/ffffff?text=JD" alt="Profile">
+                            <div class="profile-info">
+                                <h3>John Doe</h3>
+                                <p>Computer Science</p>
+                                <p class="student-id">ID: CS2021001</p>
+                            </div>
+                        </div>
+                        <div class="profile-menu-items">
+                            <a href="#" onclick="showProfile()">
+                                <i class="fas fa-user"></i> View Profile
+                            </a>
+                            <a href="#" onclick="showSettings()">
+                                <i class="fas fa-cog"></i> Settings
+                            </a>
+                            <a href="#" onclick="logout()">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-item active" data-section="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="menu-item" data-section="progress">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Progress</span>
+                </div>
+                <div class="menu-item" data-section="attendance">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Attendance</span>
+                </div>
+                <div class="menu-item" data-section="academic">
+                    <i class="fas fa-book"></i>
+                    <span>Academic Performance</span>
+                </div>
+                <div class="menu-item" data-section="certificates">
+                    <i class="fas fa-certificate"></i>
+                    <span>Certificates</span>
+                </div>
+                <div class="menu-item" data-section="portfolio">
+                    <i class="fas fa-briefcase"></i>
+                    <span>Digital Portfolio</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="section-header">
+                    <h1>Dashboard</h1>
+                    <button class="upload-btn" onclick="goToCertificateVerification()">
+                        <i class="fas fa-upload"></i>
+                        Upload Certificate
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-certificate"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>12</h3>
+                            <p>Certificates Earned</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>87%</h3>
+                            <p>Attendance Rate</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>8.5</h3>
+                            <p>CGPA</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>5</h3>
+                            <p>Pending Tasks</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activities -->
+                <div class="content-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Recent Activities</h2>
+                            <a href="#" class="view-all">View All</a>
+                        </div>
+                        <div class="activity-list">
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-certificate"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <p>AWS Cloud Practitioner Certificate uploaded</p>
+                                    <span class="activity-time">2 hours ago</span>
+                                </div>
+                                <div class="activity-status verified">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <p>Data Structures assignment submitted</p>
+                                    <span class="activity-time">1 day ago</span>
+                                </div>
+                                <div class="activity-status pending">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <p>Joined Coding Club event</p>
+                                    <span class="activity-time">3 days ago</span>
+                                </div>
+                                <div class="activity-status verified">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Deadlines -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Upcoming Deadlines</h2>
+                        </div>
+                        <div class="deadline-list">
+                            <div class="deadline-item urgent">
+                                <div class="deadline-date">
+                                    <span class="date">25</span>
+                                    <span class="month">Sep</span>
+                                </div>
+                                <div class="deadline-content">
+                                    <h4>Machine Learning Project</h4>
+                                    <p>Final submission deadline</p>
+                                </div>
+                            </div>
+                            <div class="deadline-item">
+                                <div class="deadline-date">
+                                    <span class="date">30</span>
+                                    <span class="month">Sep</span>
+                                </div>
+                                <div class="deadline-content">
+                                    <h4>Internship Report</h4>
+                                    <p>Summer internship documentation</p>
+                                </div>
+                            </div>
+                            <div class="deadline-item">
+                                <div class="deadline-date">
+                                    <span class="date">05</span>
+                                    <span class="month">Oct</span>
+                                </div>
+                                <div class="deadline-content">
+                                    <h4>Research Paper</h4>
+                                    <p>Conference submission</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Section -->
+            <section id="progress" class="content-section">
+                <div class="section-header">
+                    <h1>Academic Progress</h1>
+                </div>
+                <div class="progress-content">
+                    <div class="progress-card">
+                        <h3>Overall Progress</h3>
+                        <div class="circular-progress" data-percentage="78">
+                            <div class="progress-circle">
+                                <span class="progress-text">78%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-subjects">
+                        <div class="subject-progress">
+                            <div class="subject-header">
+                                <span>Data Structures & Algorithms</span>
+                                <span>92%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 92%"></div>
+                            </div>
+                        </div>
+                        <div class="subject-progress">
+                            <div class="subject-header">
+                                <span>Database Management</span>
+                                <span>87%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 87%"></div>
+                            </div>
+                        </div>
+                        <div class="subject-progress">
+                            <div class="subject-header">
+                                <span>Machine Learning</span>
+                                <span>75%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 75%"></div>
+                            </div>
+                        </div>
+                        <div class="subject-progress">
+                            <div class="subject-header">
+                                <span>Software Engineering</span>
+                                <span>89%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 89%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Attendance Section -->
+            <section id="attendance" class="content-section">
+                <div class="section-header">
+                    <h1>Attendance Overview</h1>
+                </div>
+                <div class="attendance-content">
+                    <div class="attendance-summary">
+                        <div class="attendance-stat">
+                            <h3>87%</h3>
+                            <p>Overall Attendance</p>
+                        </div>
+                        <div class="attendance-chart">
+                            <canvas id="attendanceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="subject-attendance">
+                        <h3>Subject-wise Attendance</h3>
+                        <div class="attendance-list">
+                            <div class="attendance-item">
+                                <span class="subject">Data Structures</span>
+                                <span class="percentage good">92%</span>
+                                <span class="status">Good</span>
+                            </div>
+                            <div class="attendance-item">
+                                <span class="subject">Database Management</span>
+                                <span class="percentage average">78%</span>
+                                <span class="status">Average</span>
+                            </div>
+                            <div class="attendance-item">
+                                <span class="subject">Machine Learning</span>
+                                <span class="percentage poor">65%</span>
+                                <span class="status">Needs Improvement</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Academic Performance Section -->
+            <section id="academic" class="content-section">
+                <div class="section-header">
+                    <h1>Academic Performance</h1>
+                </div>
+                <div class="academic-content">
+                    <div class="performance-overview">
+                        <div class="gpa-card">
+                            <h3>Current CGPA</h3>
+                            <div class="gpa-display">8.5</div>
+                            <p>Excellent Performance</p>
+                        </div>
+                        <div class="semester-performance">
+                            <h3>Semester Performance</h3>
+                            <canvas id="semesterChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="grades-table">
+                        <h3>Current Semester Grades</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Credits</th>
+                                    <th>Grade</th>
+                                    <th>Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Data Structures & Algorithms</td>
+                                    <td>4</td>
+                                    <td>A+</td>
+                                    <td>9.0</td>
+                                </tr>
+                                <tr>
+                                    <td>Database Management</td>
+                                    <td>3</td>
+                                    <td>A</td>
+                                    <td>8.5</td>
+                                </tr>
+                                <tr>
+                                    <td>Machine Learning</td>
+                                    <td>4</td>
+                                    <td>B+</td>
+                                    <td>7.5</td>
+                                </tr>
+                                <tr>
+                                    <td>Software Engineering</td>
+                                    <td>3</td>
+                                    <td>A</td>
+                                    <td>8.0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Certificates Section -->
+            <section id="certificates" class="content-section">
+                <div class="section-header">
+                    <h1>My Certificates</h1>
+                    <button class="upload-btn" onclick="goToCertificateVerification()">
+                        <i class="fas fa-upload"></i>
+                        Upload New Certificate
+                    </button>
+                </div>
+                <div class="certificates-grid">
+                    <div class="certificate-card verified">
+                        <div class="certificate-header">
+                            <img src="https://via.placeholder.com/60x60/1f2937/ffffff?text=AWS" alt="AWS">
+                            <div class="certificate-status">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Verified</span>
+                            </div>
+                        </div>
+                        <h3>AWS Cloud Practitioner</h3>
+                        <p>Amazon Web Services</p>
+                        <div class="certificate-footer">
+                            <span class="issue-date">Issued: Aug 2024</span>
+                            <div class="certificate-actions">
+                                <button class="btn-view"><i class="fas fa-eye"></i></button>
+                                <button class="btn-download"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="certificate-card verified">
+                        <div class="certificate-header">
+                            <img src="https://via.placeholder.com/60x60/0066cc/ffffff?text=MS" alt="Microsoft">
+                            <div class="certificate-status">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Verified</span>
+                            </div>
+                        </div>
+                        <h3>Azure Fundamentals</h3>
+                        <p>Microsoft</p>
+                        <div class="certificate-footer">
+                            <span class="issue-date">Issued: Jul 2024</span>
+                            <div class="certificate-actions">
+                                <button class="btn-view"><i class="fas fa-eye"></i></button>
+                                <button class="btn-download"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="certificate-card pending">
+                        <div class="certificate-header">
+                            <img src="https://via.placeholder.com/60x60/ff6b35/ffffff?text=PY" alt="Python">
+                            <div class="certificate-status">
+                                <i class="fas fa-clock"></i>
+                                <span>Pending</span>
+                            </div>
+                        </div>
+                        <h3>Python for Data Science</h3>
+                        <p>Coursera</p>
+                        <div class="certificate-footer">
+                            <span class="issue-date">Uploaded: Sep 2024</span>
+                            <div class="certificate-actions">
+                                <button class="btn-view"><i class="fas fa-eye"></i></button>
+                                <button class="btn-edit"><i class="fas fa-edit"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Digital Portfolio Section -->
+            <section id="portfolio" class="content-section">
+                <div class="section-header">
+                    <h1>Digital Portfolio</h1>
+                    <div class="portfolio-actions">
+                        <button class="btn-generate"><i class="fas fa-magic"></i> Generate Portfolio</button>
+                        <button class="btn-preview"><i class="fas fa-eye"></i> Preview</button>
+                        <button class="btn-download"><i class="fas fa-download"></i> Download PDF</button>
+                    </div>
+                </div>
+                <div class="portfolio-content">
+                    <div class="portfolio-sections">
+                        <div class="portfolio-section">
+                            <h3><i class="fas fa-user"></i> Personal Information</h3>
+                            <p>Complete profile with contact details and academic information.</p>
+                            <span class="completion-status complete">100% Complete</span>
+                        </div>
+                        <div class="portfolio-section">
+                            <h3><i class="fas fa-graduation-cap"></i> Academic Achievements</h3>
+                            <p>CGPA, semester grades, and academic recognitions.</p>
+                            <span class="completion-status complete">100% Complete</span>
+                        </div>
+                        <div class="portfolio-section">
+                            <h3><i class="fas fa-certificate"></i> Certifications</h3>
+                            <p>Professional certificates and skill validations.</p>
+                            <span class="completion-status partial">80% Complete</span>
+                        </div>
+                        <div class="portfolio-section">
+                            <h3><i class="fas fa-briefcase"></i> Internships & Projects</h3>
+                            <p>Work experience and project portfolios.</p>
+                            <span class="completion-status incomplete">60% Complete</span>
+                        </div>
+                        <div class="portfolio-section">
+                            <h3><i class="fas fa-users"></i> Extracurricular Activities</h3>
+                            <p>Club memberships, events, and volunteer work.</p>
+                            <span class="completion-status partial">75% Complete</span>
+                        </div>
+                    </div>
+                    <div class="portfolio-preview">
+                        <h3>Portfolio Preview</h3>
+                        <div class="preview-card">
+                            <div class="preview-header">
+                                <img src="https://via.placeholder.com/80x80/4f46e5/ffffff?text=JD" alt="Profile">
+                                <div class="preview-info">
+                                    <h4>John Doe</h4>
+                                    <p>Computer Science Engineering</p>
+                                    <p>CGPA: 8.5 | Batch: 2025</p>
+                                </div>
+                            </div>
+                            <div class="preview-stats">
+                                <div class="stat-item">
+                                    <span class="stat-number">12</span>
+                                    <span class="stat-label">Certificates</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">3</span>
+                                    <span class="stat-label">Internships</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">8</span>
+                                    <span class="stat-label">Projects</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Profile - University Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --light-bg: #ecf0f1;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--light-bg) 0%, #bdc3c7 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #5dade2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+            margin: 0 auto 1rem;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+
+        .info-card h5 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            min-width: 120px;
+        }
+
+        .info-value {
+            color: #555;
+            flex: 1;
+            text-align: right;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .status-inactive {
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #c0392b 100%);
+            border: none;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            color: white;
+        }
+
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .academic-progress {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-item {
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: rgba(255,255,255,0.3);
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background-color: white;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="../index.html">
+                <i class="fas fa-university me-2"></i>University Portal
+            </a>
+            <button class="btn back-btn ms-auto" onclick="goBack()">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </button>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Student Profile Content -->
+        <div id="profileContent" style="display: none;">
+            <!-- Profile Header -->
+            <div class="profile-header text-center">
+                <div class="profile-avatar" id="profileAvatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h2 id="studentName">Student Name</h2>
+                <p class="mb-0" id="studentProgram">Program Details</p>
+            </div>
+
+            <div class="row">
+                <!-- Personal Information -->
+                <div class="col-lg-6">
+                    <div class="info-card">
+                        <h5><i class="fas fa-user me-2"></i>Personal Information</h5>
+                        <div class="info-row">
+                            <span class="info-label">Student ID:</span>
+                            <span class="info-value" id="studentId">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Roll Number:</span>
+                            <span class="info-value" id="rollNumber">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Email:</span>
+                            <span class="info-value" id="email">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Phone:</span>
+                            <span class="info-value" id="phone">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Date of Birth:</span>
+                            <span class="info-value" id="dateOfBirth">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Gender:</span>
+                            <span class="info-value" id="gender">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Address:</span>
+                            <span class="info-value" id="address">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Academic Information -->
+                <div class="col-lg-6">
+                    <div class="info-card">
+                        <h5><i class="fas fa-graduation-cap me-2"></i>Academic Information</h5>
+                        <div class="info-row">
+                            <span class="info-label">Program:</span>
+                            <span class="info-value" id="program">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Department:</span>
+                            <span class="info-value" id="department">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Current Year:</span>
+                            <span class="info-value" id="currentYear">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Current Semester:</span>
+                            <span class="info-value" id="currentSemester">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Admission Year:</span>
+                            <span class="info-value" id="admissionYear">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Status:</span>
+                            <span class="info-value" id="status">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">GPA/CGPA:</span>
+                            <span class="info-value" id="gpa">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Family Information -->
+                <div class="col-lg-6">
+                    <div class="info-card">
+                        <h5><i class="fas fa-users me-2"></i>Family Information</h5>
+                        <div class="info-row">
+                            <span class="info-label">Parent Name:</span>
+                            <span class="info-value" id="parentName">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Parent Phone:</span>
+                            <span class="info-value" id="parentPhone">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Emergency Contact:</span>
+                            <span class="info-value" id="emergencyContact">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="col-lg-6">
+                    <div class="info-card">
+                        <h5><i class="fas fa-info-circle me-2"></i>Additional Information</h5>
+                        <div class="info-row">
+                            <span class="info-label">Enrollment Date:</span>
+                            <span class="info-value" id="enrollmentDate">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Expected Graduation:</span>
+                            <span class="info-value" id="expectedGraduation">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Student Type:</span>
+                            <span class="info-value" id="studentType">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Fee Status:</span>
+                            <span class="info-value" id="feeStatus">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Academic Progress -->
+            <div class="academic-progress">
+                <h5><i class="fas fa-chart-line me-2"></i>Academic Progress</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="progress-item">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Semester Progress</span>
+                                <span id="semesterProgress">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="semesterBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="progress-item">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Course Completion</span>
+                                <span id="courseProgress">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="courseBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="progress-item">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Overall Progress</span>
+                                <span id="overallProgress">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="overallBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="alert alert-danger" style="display: none;">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span id="errorText">Error loading student information</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Get student ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentId = urlParams.get('id');
+
+        if (!studentId) {
+            showError('No student ID provided');
+        } else {
+            loadStudentProfile(studentId);
+        }
+
+        async function loadStudentProfile(studentId) {
+            try {
+                const response = await fetch(`/api/students/profile/${studentId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.student) {
+                    displayStudentProfile(data.student);
+                } else {
+                    throw new Error(data.message || 'Failed to load student profile');
+                }
+            } catch (error) {
+                console.error('Error loading student profile:', error);
+                showError(error.message);
+            }
+        }
+
+        function displayStudentProfile(student) {
+            // Hide loading spinner and show content
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('profileContent').style.display = 'block';
+
+            // Set profile header
+            const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown Student';
+            document.getElementById('studentName').textContent = fullName;
+            document.getElementById('studentProgram').textContent = `${student.program || 'N/A'} - ${student.department || 'N/A'}`;
+            
+            // Set avatar initials
+            const initials = getInitials(fullName);
+            document.getElementById('profileAvatar').innerHTML = initials;
+
+            // Personal Information
+            document.getElementById('studentId').textContent = student.id || '-';
+            document.getElementById('rollNumber').textContent = student.roll_number || '-';
+            document.getElementById('email').textContent = student.email || '-';
+            document.getElementById('phone').textContent = student.phone || '-';
+            document.getElementById('dateOfBirth').textContent = formatDate(student.date_of_birth) || '-';
+            document.getElementById('gender').textContent = student.gender || '-';
+            document.getElementById('address').textContent = student.address || '-';
+
+            // Academic Information
+            document.getElementById('program').textContent = student.program || '-';
+            document.getElementById('department').textContent = student.department || '-';
+            document.getElementById('currentYear').textContent = student.current_year || '-';
+            document.getElementById('currentSemester').textContent = student.current_semester || '-';
+            document.getElementById('admissionYear').textContent = student.admission_year || '-';
+            
+            // Status with badge
+            const statusElement = document.getElementById('status');
+            if (student.status) {
+                statusElement.innerHTML = `<span class="status-badge ${student.status.toLowerCase() === 'active' ? 'status-active' : 'status-inactive'}">${student.status}</span>`;
+            } else {
+                statusElement.textContent = '-';
+            }
+            
+            document.getElementById('gpa').textContent = student.gpa || student.cgpa || '-';
+
+            // Family Information
+            document.getElementById('parentName').textContent = student.parent_name || '-';
+            document.getElementById('parentPhone').textContent = student.parent_phone || '-';
+            document.getElementById('emergencyContact').textContent = student.emergency_contact || '-';
+
+            // Additional Information
+            document.getElementById('enrollmentDate').textContent = formatDate(student.enrollment_date) || '-';
+            document.getElementById('expectedGraduation').textContent = formatDate(student.expected_graduation) || '-';
+            document.getElementById('studentType').textContent = student.student_type || '-';
+            document.getElementById('feeStatus').textContent = student.fee_status || '-';
+
+            // Academic Progress (mock data for now)
+            updateProgress('semesterProgress', 'semesterBar', calculateSemesterProgress(student));
+            updateProgress('courseProgress', 'courseBar', calculateCourseProgress(student));
+            updateProgress('overallProgress', 'overallBar', calculateOverallProgress(student));
+        }
+
+        function getInitials(name) {
+            return name.split(' ')
+                      .map(word => word.charAt(0).toUpperCase())
+                      .join('')
+                      .substring(0, 2);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        function calculateSemesterProgress(student) {
+            // Mock calculation based on current semester
+            const semester = parseInt(student.current_semester) || 1;
+            return Math.min(100, (semester * 12.5)); // 8 semesters = 100%
+        }
+
+        function calculateCourseProgress(student) {
+            // Mock calculation
+            return Math.random() * 100;
+        }
+
+        function calculateOverallProgress(student) {
+            // Mock calculation based on year
+            const year = parseInt(student.current_year) || 1;
+            return Math.min(100, (year * 25)); // 4 years = 100%
+        }
+
+        function updateProgress(textId, barId, percentage) {
+            const rounded = Math.round(percentage);
+            document.getElementById(textId).textContent = `${rounded}%`;
+            document.getElementById(barId).style.width = `${rounded}%`;
+        }
+
+        function showError(message) {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('errorMessage').style.display = 'block';
+        }
+
+        function goBack() {
+            if (document.referrer) {
+                window.history.back();
+            } else {
+                window.location.href = '../index.html';
+            }
+        }
+    </script>
+</body>
+</html>

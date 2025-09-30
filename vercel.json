@@ -1,36 +1,4 @@
 {
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/login/index.html"
-    },
-    {
-      "source": "/login",
-      "destination": "/login/index.html"
-    },
-    {
-      "source": "/student-dashboard",
-      "destination": "/student_page/index.html"
-    },
-    {
-      "source": "/student-page",
-      "destination": "/student_page/index.html"
-    },
-    {
-      "source": "/faculty-dashboard",
-      "destination": "/faculty_page/index.html"
-    },
-    {
-      "source": "/faculty-page",
-      "destination": "/faculty_page/index.html"
-    },
-    {
-      "source": "/university-portal",
-      "destination": "/university_portal/index.html"
-    },
-    {
-      "source": "/certificate-verification",
-      "destination": "/certificate_verification/public/index.html"
-    }
-  ]
+  "cleanUrls": true,
+  "trailingSlash": false
 }

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Students Details - University Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style-premium.css">
+    <style>
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-box {
+            position: relative;
+            min-width: 300px;
+        }
+        .search-box input {
+            padding-left: 40px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .student-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .department-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-graduated { background: #d1ecf1; color: #0c5460; }
+        .export-btn {
+            background: #28a745;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .export-btn:hover {
+            background: #218838;
+            color: white;
+        }
+        .back-btn {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        .back-btn:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="mb-1"><i class="fas fa-graduation-cap me-2"></i>All Students Details</h2>
+                <p class="text-muted mb-0">Complete list of all registered students</p>
+            </div>
+            <div class="header-actions">
+                <div class="search-box">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search students...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button class="export-btn" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel me-2"></i>Export Excel
+                </button>
+                <a href="index.html" class="back-btn">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h4 id="totalStudentsCount">0</h4>
+                        <small>Total Students</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-success text-white">
+                    <div class="card-body text-center">
+                        <h4 id="activeStudentsCount">0</h4>
+                        <small>Active Students</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-info text-white">
+                    <div class="card-body text-center">
+                        <h4 id="graduatedStudentsCount">0</h4>
+                        <small>Graduated Students</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h4 id="departmentsCount">0</h4>
+                        <small>Departments</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Students Table -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="studentsTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 60px;">#</th>
+                            <th style="width: 80px;">Avatar</th>
+                            <th>Register Number</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Year/Semester</th>
+                            <th>Phone</th>
+                            <th>Parent</th>
+                            <th>Status</th>
+                            <th>Created Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                        <tr>
+                            <td colspan="10" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 mb-0">Loading students data...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div>
+                <span class="text-muted" id="paginationInfo">Showing 0 - 0 of 0 students</span>
+            </div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0" id="pagination">
+                    <!-- Pagination will be generated here -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let allStudents = [];
+        let filteredStudents = [];
+        let currentPage = 1;
+        const studentsPerPage = 25;
+
+        // Department color mapping
+        const deptColors = {
+            'CSE': 'bg-primary',
+            'ECE': 'bg-success',
+            'ME': 'bg-danger',
+            'IT': 'bg-warning',
+            'EEE': 'bg-info'
+        };
+
+        // Load students data
+        async function loadStudentsData() {
+            try {
+                const response = await fetch('/api/students/all-details');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allStudents = data.students;
+                    filteredStudents = allStudents;
+                    updateStatistics();
+                    displayStudents();
+                    setupPagination();
+                } else {
+                    showError('Failed to load students data');
+                }
+            } catch (error) {
+                console.error('Error loading students:', error);
+                showError('Error loading students data');
+            }
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('totalStudentsCount').textContent = allStudents.length;
+            document.getElementById('activeStudentsCount').textContent = 
+                allStudents.filter(s => s.enrollment_status === 'Active').length;
+            document.getElementById('graduatedStudentsCount').textContent = 
+                allStudents.filter(s => s.enrollment_status === 'Graduated').length;
+            
+            const uniqueDepts = [...new Set(allStudents.map(s => s.dept_code || s.department))];
+            document.getElementById('departmentsCount').textContent = uniqueDepts.length;
+        }
+
+        // Display students
+        function displayStudents() {
+            const tbody = document.getElementById('studentsTableBody');
+            const startIndex = (currentPage - 1) * studentsPerPage;
+            const endIndex = startIndex + studentsPerPage;
+            const studentsToShow = filteredStudents.slice(startIndex, endIndex);
+
+            if (studentsToShow.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="text-center py-4">
+                            <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                            <p>No students found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = studentsToShow.map((student, index) => {
+                const rowIndex = startIndex + index + 1;
+                const initials = `${student.first_name.charAt(0)}${student.last_name.charAt(0)}`;
+                const deptClass = deptColors[student.dept_code || student.department] || 'bg-secondary';
+                
+                return `
+                    <tr>
+                        <td>${rowIndex}</td>
+                        <td>
+                            <div class="student-avatar">
+                                ${initials}
+                            </div>
+                        </td>
+                        <td><strong>${student.register_number}</strong></td>
+                        <td>${student.first_name} ${student.last_name}</td>
+                        <td><small>${student.email}</small></td>
+                        <td>
+                            <span class="department-badge bg-primary text-white">
+                                ${student.department}
+                            </span>
+                        </td>
+                        <td>
+                            <div>Year ${student.current_year || 'N/A'}</div>
+                            <small class="text-muted">Sem ${student.current_semester || 'N/A'}</small>
+                        </td>
+                        <td><small>${student.phone || 'N/A'}</small></td>
+                        <td>
+                            <div><small>${student.parent_name || 'N/A'}</small></div>
+                            <div><small class="text-muted">${student.parent_phone || 'N/A'}</small></div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-${student.status ? student.status.toLowerCase() : 'active'}">
+                                ${student.status || 'Active'}
+                            </span>
+                        </td>
+                        <td><small>${formatDate(student.created_at)}</small></td>
+                    </tr>
+                `;
+            }).join('');
+
+            updatePaginationInfo();
+        }
+
+        // Setup pagination
+        function setupPagination() {
+            const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = '';
+            
+            // Previous button
+            paginationHTML += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
+                </li>
+            `;
+
+            // Page numbers
+            for (let i = 1; i <= Math.min(totalPages, 10); i++) {
+                paginationHTML += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                    </li>
+                `;
+            }
+
+            // Next button
+            paginationHTML += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
+                </li>
+            `;
+
+            pagination.innerHTML = paginationHTML;
+        }
+
+        // Change page
+        function changePage(page) {
+            const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            displayStudents();
+            setupPagination();
+        }
+
+        // Update pagination info
+        function updatePaginationInfo() {
+            const startIndex = (currentPage - 1) * studentsPerPage + 1;
+            const endIndex = Math.min(currentPage * studentsPerPage, filteredStudents.length);
+            const total = filteredStudents.length;
+            
+            document.getElementById('paginationInfo').textContent = 
+                `Showing ${startIndex} - ${endIndex} of ${total} students`;
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                filteredStudents = allStudents;
+            } else {
+                filteredStudents = allStudents.filter(student => 
+                    student.register_number.toLowerCase().includes(searchTerm) ||
+                    student.first_name.toLowerCase().includes(searchTerm) ||
+                    student.last_name.toLowerCase().includes(searchTerm) ||
+                    student.email.toLowerCase().includes(searchTerm) ||
+                    (student.department && student.department.toLowerCase().includes(searchTerm))
+                );
+            }
+            
+            currentPage = 1;
+            updateStatistics();
+            displayStudents();
+            setupPagination();
+        });
+
+        // Export to Excel
+        function exportToExcel() {
+            const exportData = filteredStudents.map((student, index) => ({
+                'S.No': index + 1,
+                'Register Number': student.register_number,
+                'First Name': student.first_name,
+                'Last Name': student.last_name,
+                'Email': student.email,
+                'Department': student.department || 'N/A',
+                'Current Year': student.current_year || 'N/A',
+                'Current Semester': student.current_semester || 'N/A',
+                'Phone': student.phone || 'N/A',
+                'Parent Name': student.parent_name || 'N/A',
+                'Parent Phone': student.parent_phone || 'N/A',
+                // 'Parent Email': student.parent_email || 'N/A', // Column doesn't exist in database
+                'Status': student.status || 'Active',
+                'Created Date': formatDate(student.created_at),
+                'Date of Birth': formatDate(student.date_of_birth),
+                'Gender': student.gender,
+                'Address': student.address || 'N/A'
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            
+            // Auto-width columns
+            const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+                wch: Math.max(key.length, 15)
+            }));
+            ws['!cols'] = colWidths;
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Students Details');
+            XLSX.writeFile(wb, `Students_Details_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString('en-IN');
+        }
+
+        function showError(message) {
+            document.getElementById('studentsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="13" class="text-center py-4 text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <p>${message}</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStudentsData();
+        });
+    </script>
+</body>
+</html>
