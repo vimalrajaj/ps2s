@@ -1,0 +1,12 @@
+server.js
+routes/
+supabase.js
+package.json
+package-lock.json
+node_modules/
+.env
+*.sql
+uploads/
+temp/
+certificate_verification/
+sample_marks_upload.*

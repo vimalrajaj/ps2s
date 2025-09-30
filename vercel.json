@@ -1,4 +1,28 @@
 {
+  "buildCommand": "echo 'No build needed'",
+  "outputDirectory": "public",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/student-page",
+      "destination": "/student_page/index.html"
+    },
+    {
+      "source": "/faculty-page",
+      "destination": "/faculty_page/index.html"
+    },
+    {
+      "source": "/university-portal",
+      "destination": "/university_portal/index.html"
+    }
+  ]
 }
