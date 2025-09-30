@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: university-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        value: https://dpsdjjztxosfutfqxdkd.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwc2Rqanp0eG9zZnV0ZnF4ZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNzA3MzIsImV4cCI6MjA3NDc0NjczMn0.SVXDg7Kk9IbYLA7GecxXq-s8vynpt9MVgblywH6tesQ
+      - key: SUPABASE_SERVICE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwc2Rqanp0eG9zZnV0ZnF4ZGtkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTE3MDczMiwiZXhwIjoyMDc0NzQ2NzMyfQ.7YAgNO5FPf7L-OWvn9-xBzJeG1RpNcxPSbOeLSgKM_8

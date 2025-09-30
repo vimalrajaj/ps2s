@@ -14,23 +14,27 @@ router.post('/departments', async (req, res) => {
         }
 
         // Check if department already exists
-        const [existing] = await req.dbPool.execute(
-            'SELECT dept_name FROM departments WHERE dept_name = ? OR dept_code = ?',
-            [name, code]
-        );
-
-        if (existing.length > 0) {
+        const { data: existing, error: existingError } = await req.supabase
+            .from('departments')
+            .select('id')
+            .or(`dept_name.eq.${name},dept_code.eq.${code}`);
+        if (existingError) {
+            console.error('Dept existence check error:', existingError);
+            return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+        if (existing && existing.length > 0) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Department with this name or code already exists' 
             });
         }
-
-        // Insert new department
-        await req.dbPool.execute(
-            'INSERT INTO departments (dept_name, dept_code, description, head_of_department) VALUES (?, ?, ?, ?)',
-            [name, code, description || null, head_of_department || null]
-        );
+        const { error: insertError } = await req.supabase
+            .from('departments')
+            .insert([{ dept_name: name, dept_code: code, description: description || null, head_of_department: head_of_department || null }]);
+        if (insertError) {
+            console.error('Insert department error:', insertError);
+            return res.status(500).json({ success: false, message: 'Failed to create department' });
+        }
 
         res.status(201).json({
             success: true,
@@ -49,9 +53,11 @@ router.post('/departments', async (req, res) => {
 // Get all departments
 router.get('/departments', async (req, res) => {
     try {
-        const [departments] = await req.dbPool.execute(
-            'SELECT * FROM departments ORDER BY dept_name'
-        );
+        const { data: departments, error } = await req.supabase
+            .from('departments')
+            .select('*')
+            .order('dept_name');
+        if (error) throw error;
 
         res.json({
             success: true,
@@ -81,23 +87,29 @@ router.put('/departments/:id', async (req, res) => {
         }
 
         // Check if department exists
-        const [existing] = await req.dbPool.execute(
-            'SELECT id FROM departments WHERE id = ?',
-            [id]
-        );
-
-        if (existing.length === 0) {
+        const { data: dept, error: deptError } = await req.supabase
+            .from('departments')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle();
+        if (deptError) {
+            console.error('Dept fetch error:', deptError);
+            return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+        if (!dept) {
             return res.status(404).json({ 
                 success: false, 
                 message: 'Department not found' 
             });
         }
-
-        // Update department
-        await req.dbPool.execute(
-            'UPDATE departments SET dept_name = ?, dept_code = ?, description = ?, head_of_department = ? WHERE id = ?',
-            [name, code, description || null, head_of_department || null, id]
-        );
+        const { error: updateError } = await req.supabase
+            .from('departments')
+            .update({ dept_name: name, dept_code: code, description: description || null, head_of_department: head_of_department || null })
+            .eq('id', id);
+        if (updateError) {
+            console.error('Dept update error:', updateError);
+            return res.status(500).json({ success: false, message: 'Failed to update department' });
+        }
 
         res.json({
             success: true,
@@ -119,70 +131,39 @@ router.delete('/departments/:id', async (req, res) => {
         const { id } = req.params;
 
         // Check if department exists
-        const [existing] = await req.dbPool.execute(
-            'SELECT id FROM departments WHERE id = ?',
-            [id]
-        );
-
-        if (existing.length === 0) {
+        const { data: dept, error: deptError } = await req.supabase
+            .from('departments')
+            .select('id, dept_code')
+            .eq('id', id)
+            .maybeSingle();
+        if (deptError) return res.status(500).json({ success: false, message: 'Internal server error' });
+        if (!dept) {
             return res.status(404).json({ 
                 success: false, 
                 message: 'Department not found' 
             });
         }
-
-        // Get department code for cleanup
-        const [deptInfo] = await req.dbPool.execute(
-            'SELECT dept_code FROM departments WHERE id = ?',
-            [id]
-        );
-
-        if (deptInfo.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Department not found'
-            });
-        }
-
-        const deptCode = deptInfo[0].dept_code;
+        const deptCode = dept.dept_code;
 
         // CASCADE DELETION: Delete all associated data
         
         // 1. Delete mentor assignments for classes in this department
-        await req.dbPool.execute(
-            'DELETE ma FROM mentor_assignments ma JOIN classes c ON ma.class_id = c.id WHERE c.department_id = ?',
-            [id]
-        );
+        await req.supabase.from('mentor_assignments').delete().in('class_id', (await (async ()=>{ const { data } = await req.supabase.from('classes').select('id').eq('department_id', id); return (data||[]).map(c=>c.id); })()));
 
         // 2. Delete subjects in this department
-        await req.dbPool.execute(
-            'DELETE FROM subjects WHERE department_id = ?',
-            [id]
-        );
+        await req.supabase.from('subjects').delete().eq('department_id', id);
 
         // 3. Update students to remove department assignment
-        await req.dbPool.execute(
-            'UPDATE students SET department = NULL, class_id = NULL WHERE department = ?',
-            [deptCode]
-        );
+        await req.supabase.from('students').update({ department: null, class_id: null }).eq('department', deptCode);
 
         // 4. Update faculty to remove department assignment
-        await req.dbPool.execute(
-            'UPDATE faculty SET department = NULL WHERE department = ?',
-            [deptCode]
-        );
+        await req.supabase.from('faculty').update({ department: null }).eq('department', deptCode);
 
         // 5. Delete classes in this department
-        await req.dbPool.execute(
-            'DELETE FROM classes WHERE department_id = ?',
-            [id]
-        );
+        await req.supabase.from('classes').delete().eq('department_id', id);
 
         // 6. Finally, delete the department
-        await req.dbPool.execute(
-            'DELETE FROM departments WHERE id = ?',
-            [id]
-        );
+        await req.supabase.from('departments').delete().eq('id', id);
 
         res.json({
             success: true,
@@ -204,12 +185,13 @@ router.get('/departments/:id/details', async (req, res) => {
         const { id } = req.params;
 
         // Get department details
-        const [department] = await req.dbPool.execute(
-            'SELECT * FROM departments WHERE id = ?',
-            [id]
-        );
-
-        if (department.length === 0) {
+        const { data: department, error: deptError } = await req.supabase
+            .from('departments')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+        if (deptError) return res.status(500).json({ success: false, message: 'Internal server error' });
+        if (!department) {
             return res.status(404).json({
                 success: false,
                 message: 'Department not found'
@@ -218,19 +200,15 @@ router.get('/departments/:id/details', async (req, res) => {
 
         // Get all academic years (since they're independent of departments)
         // Plus academic years that have classes in this department
-        const [academicYears] = await req.dbPool.execute(
-            `SELECT DISTINCT ay.*, 
-                    COUNT(c.id) as class_count
-             FROM academic_years ay 
-             LEFT JOIN classes c ON ay.id = c.academic_year_id AND c.department_id = ?
-             GROUP BY ay.id 
-             ORDER BY ay.start_year DESC`,
-            [id]
-        );
+        const { data: academicYears, error: ayError } = await req.supabase
+            .from('academic_years')
+            .select('id, year_range, start_year, end_year')
+            .order('start_year', { ascending: false });
+        if (ayError) return res.status(500).json({ success: false, message: 'Internal server error' });
 
         res.json({
             success: true,
-            department: department[0],
+            department: department,
             academicYears
         });
 
@@ -255,10 +233,15 @@ router.post('/departments/:id/academic-years', async (req, res) => {
 
         const year_range = `${start_year} - ${end_year}`;
 
-        await req.dbPool.execute(
-            'INSERT INTO academic_years (year_range, start_year, end_year) VALUES (?, ?, ?)',
-            [year_range, start_year, end_year]
-        );
+        const { error: insertError } = await req.supabase
+            .from('academic_years')
+            .insert([{ year_range, start_year, end_year, status: 'active' }]);
+        if (insertError) {
+            if (insertError.code === '23505') { // unique_violation
+                return res.status(400).json({ success: false, message: 'Academic year already exists' });
+            }
+            return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
 
         res.status(201).json({
             success: true,
@@ -286,19 +269,49 @@ router.get('/academic-years/:id/classes', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const [classes] = await req.dbPool.execute(`
-            SELECT 
-                c.*,
-                (SELECT COUNT(*) FROM students s WHERE s.class_id = c.id) as student_count,
-                COALESCE(f.first_name, '') as mentor_first_name,
-                COALESCE(f.last_name, '') as mentor_last_name,
-                COALESCE(CONCAT(f.first_name, ' ', f.last_name), 'Not assigned') as mentor_name
-            FROM classes c
-            LEFT JOIN mentor_assignments ma ON c.id = ma.class_id AND ma.status = 'active'
-            LEFT JOIN faculty f ON ma.faculty_id = f.id
-            WHERE c.academic_year_id = ? 
-            ORDER BY c.class_name, c.section
-        `, [id]);
+        const { data: classesRaw, error: clsError } = await req.supabase
+            .from('classes')
+            .select('id, academic_year_id, class_name, section')
+            .eq('academic_year_id', id)
+            .order('class_name')
+            .order('section');
+        if (clsError) return res.status(500).json({ success: false, message: 'Internal server error' });
+        // Load mentor assignments
+        const classIds = (classesRaw||[]).map(c=>c.id);
+        let mentorMap = new Map();
+        if (classIds.length) {
+            const { data: mentors } = await req.supabase
+                .from('mentor_assignments')
+                .select('class_id, faculty_id, status')
+                .in('class_id', classIds)
+                .eq('status', 'active');
+            (mentors||[]).forEach(m=>mentorMap.set(m.class_id, m));
+        }
+        const { data: faculties } = await req.supabase
+            .from('faculty')
+            .select('id, first_name, last_name');
+        const facultyMap = new Map();
+        (faculties||[]).forEach(f=>facultyMap.set(f.id, f));
+        const { data: students } = await req.supabase
+            .from('students')
+            .select('id, class_id')
+            .in('class_id', classIds || []);
+        const counts = new Map();
+        (students||[]).forEach(s=>counts.set(s.class_id,(counts.get(s.class_id)||0)+1));
+        const classes = (classesRaw||[]).map(c=>{
+            const mentor = mentorMap.get(c.id);
+            const faculty = mentor ? facultyMap.get(mentor.faculty_id) : null;
+            return {
+                id: c.id,
+                academic_year_id: c.academic_year_id,
+                class_name: c.class_name,
+                section: c.section,
+                student_count: counts.get(c.id)||0,
+                mentor_first_name: faculty?.first_name || '',
+                mentor_last_name: faculty?.last_name || '',
+                mentor_name: faculty ? `${faculty.first_name} ${faculty.last_name}` : 'Not assigned'
+            };
+        });
 
         console.log('🏫 Classes found for academic year', id, ':', classes.length);
         if (classes.length > 0) {
@@ -329,10 +342,12 @@ router.post('/academic-years/:id/classes', async (req, res) => {
             });
         }
 
-        await req.dbPool.execute(
-            'INSERT INTO classes (academic_year_id, department_id, class_name, section, room_number, class_teacher) VALUES (?, ?, ?, ?, ?, ?)',
-            [id, department_id, class_name, section, room_number || null, class_teacher || null]
-        );
+        const { error: insertClassError } = await req.supabase
+            .from('classes')
+            .insert([{ academic_year_id: id, department_id, class_name, section, room_number: room_number || null, class_teacher: class_teacher || null }]);
+        if (insertClassError) {
+            return res.status(500).json({ success: false, message: 'Failed to create class' });
+        }
 
         res.status(201).json({
             success: true,
@@ -361,30 +376,26 @@ router.delete('/classes/:id', async (req, res) => {
         const { id } = req.params;
 
         // First, delete all mentor assignments for this class (cascade deletion)
-        await req.dbPool.execute(
-            'DELETE FROM mentor_assignments WHERE class_id = ?',
-            [id]
-        );
+        await req.supabase.from('mentor_assignments').delete().eq('class_id', id);
 
         // Check if class has students
-        const [students] = await req.dbPool.execute(
-            'SELECT COUNT(*) as student_count FROM students WHERE class_id = ?',
-            [id]
-        );
-
-        if (students[0].student_count > 0) {
+        const { data: studentsCount } = await req.supabase
+            .from('students')
+            .select('id', { count: 'exact', head: true })
+            .eq('class_id', id);
+        if ((studentsCount && studentsCount.length) || studentsCount === null) {
+            // Supabase count needs head:true; head returns no rows; rely on count in response (not accessible here). Skip strict check.
+        }
+        const { data: studentsList } = await req.supabase.from('students').select('id').eq('class_id', id);
+        if (studentsList && studentsList.length > 0) {
             return res.status(400).json({
                 success: false,
-                message: `Cannot delete class. It has ${students[0].student_count} students. Please reassign students first.`
+                message: `Cannot delete class. It has ${studentsList.length} students. Please reassign students first.`
             });
         }
-
-        const [result] = await req.dbPool.execute(
-            'DELETE FROM classes WHERE id = ?',
-            [id]
-        );
-
-        if (result.affectedRows === 0) {
+        const { error: delError } = await req.supabase.from('classes').delete().eq('id', id);
+        if (delError) {
+            console.error('Delete class error:', delError);
             return res.status(404).json({
                 success: false,
                 message: 'Class not found'
@@ -408,12 +419,13 @@ router.delete('/academic-years/:id', async (req, res) => {
         const { id } = req.params;
 
         // Check if academic year exists
-        const [academicYear] = await req.dbPool.execute(
-            'SELECT * FROM academic_years WHERE id = ?',
-            [id]
-        );
-
-        if (academicYear.length === 0) {
+        const { data: ay, error: ayFetchError } = await req.supabase
+            .from('academic_years')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle();
+        if (ayFetchError) return res.status(500).json({ success: false, message: 'Internal server error' });
+        if (!ay) {
             return res.status(404).json({
                 success: false,
                 message: 'Academic year not found'
@@ -421,15 +433,26 @@ router.delete('/academic-years/:id', async (req, res) => {
         }
 
         // Check if academic year has classes with students (we'll handle mentor assignments automatically)
-        const [classes] = await req.dbPool.execute(
-            `SELECT c.id, c.class_name, c.section,
-                    COUNT(DISTINCT s.id) as student_count
-             FROM classes c
-             LEFT JOIN students s ON c.id = s.class_id
-             WHERE c.academic_year_id = ?
-             GROUP BY c.id, c.class_name, c.section`,
-            [id]
-        );
+        const { data: classesForYear } = await req.supabase
+            .from('classes')
+            .select('id, class_name, section')
+            .eq('academic_year_id', id);
+        let blocked = null;
+        if (classesForYear && classesForYear.length) {
+            for (const cls of classesForYear) {
+                const { data: studentsInClass } = await req.supabase
+                    .from('students')
+                    .select('id')
+                    .eq('class_id', cls.id);
+                if (studentsInClass && studentsInClass.length > 0) {
+                    blocked = { name: `${cls.class_name}-${cls.section}`, count: studentsInClass.length };
+                    break;
+                }
+            }
+        }
+        if (blocked) {
+            return res.status(400).json({ success: false, message: `Cannot delete academic year. Class "${blocked.name}" has ${blocked.count} students. Please reassign students first.` });
+        }
 
         // Check if any class has student dependencies
         for (const cls of classes) {
@@ -442,24 +465,15 @@ router.delete('/academic-years/:id', async (req, res) => {
         }
 
         // First, delete all mentor assignments for classes in this academic year
-        await req.dbPool.execute(
-            'DELETE ma FROM mentor_assignments ma JOIN classes c ON ma.class_id = c.id WHERE c.academic_year_id = ?',
-            [id]
-        );
+        const classIdsYear = (classesForYear||[]).map(c=>c.id);
+        if (classIdsYear.length) await req.supabase.from('mentor_assignments').delete().in('class_id', classIdsYear);
 
         // Then delete all classes for this academic year
-        await req.dbPool.execute(
-            'DELETE FROM classes WHERE academic_year_id = ?',
-            [id]
-        );
+        await req.supabase.from('classes').delete().eq('academic_year_id', id);
 
         // Delete the academic year
-        const [result] = await req.dbPool.execute(
-            'DELETE FROM academic_years WHERE id = ?',
-            [id]
-        );
-
-        if (result.affectedRows === 0) {
+        const { error: deleteAyError } = await req.supabase.from('academic_years').delete().eq('id', id);
+        if (deleteAyError) {
             return res.status(404).json({
                 success: false,
                 message: 'Academic year not found'
@@ -480,20 +494,24 @@ router.delete('/academic-years/:id', async (req, res) => {
 // Get all departments with detailed information for dashboard
 router.get('/departments/all-details', async (req, res) => {
     try {
-        const [departments] = await req.dbPool.execute(`
-            SELECT 
-                d.id,
-                d.dept_code as dept_code,
-                d.dept_name as dept_name,
-                d.head_of_department as dept_head,
-                COUNT(DISTINCT f.id) as faculty_count,
-                COUNT(DISTINCT s.id) as student_count
-            FROM departments d
-            LEFT JOIN faculty f ON d.dept_code = f.department AND f.status = 'active'
-            LEFT JOIN students s ON d.dept_code = s.department AND s.status = 'active'
-            GROUP BY d.id, d.dept_code, d.dept_name, d.head_of_department
-            ORDER BY d.dept_code
-        `);
+        const { data: deptList, error: deptErr } = await req.supabase
+            .from('departments')
+            .select('id, dept_code, dept_name, head_of_department');
+        if (deptErr) return res.status(500).json({ success: false, message: 'Internal server error' });
+        let facultyCounts = new Map();
+        let studentCounts = new Map();
+        const { data: faculty } = await req.supabase.from('faculty').select('id, department').eq('status','active');
+        (faculty||[]).forEach(f=>facultyCounts.set(f.department,(facultyCounts.get(f.department)||0)+1));
+        const { data: studentsAll } = await req.supabase.from('students').select('id, department').eq('status','active');
+        (studentsAll||[]).forEach(s=>studentCounts.set(s.department,(studentCounts.get(s.department)||0)+1));
+        const departments = (deptList||[]).map(d=>({
+            id: d.id,
+            dept_code: d.dept_code,
+            dept_name: d.dept_name,
+            dept_head: d.head_of_department,
+            faculty_count: facultyCounts.get(d.dept_code)||0,
+            student_count: studentCounts.get(d.dept_code)||0
+        }));
 
         console.log('🏢 Fetched', departments.length, 'departments for detailed view');
 
@@ -516,9 +534,11 @@ router.get('/departments/all-details', async (req, res) => {
 // Get all academic years
 router.get('/academic-years', async (req, res) => {
     try {
-        const [academicYears] = await req.dbPool.execute(
-            'SELECT * FROM academic_years ORDER BY start_year DESC'
-        );
+        const { data: academicYears, error } = await req.supabase
+            .from('academic_years')
+            .select('*')
+            .order('start_year', { ascending: false });
+        if (error) throw error;
 
         res.json({
             success: true,

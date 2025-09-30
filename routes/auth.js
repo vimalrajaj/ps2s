@@ -1,5 +1,6 @@
 ﻿const express = require('express');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 
 // Authentication middleware
@@ -62,66 +63,95 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check faculty table
-        const [facultyResults] = await req.dbPool.execute(
-            'SELECT * FROM faculty WHERE faculty_code = ? AND password = ? AND status = "active"',
-            [username, password]
-        );
-
-        if (facultyResults.length > 0) {
-            const faculty = facultyResults[0];
-            
-            // Set session
-            req.session.user = {
-                id: faculty.id,
-                username: faculty.faculty_code,
-                name: `${faculty.first_name} ${faculty.last_name}`,
-                type: 'faculty',
-                department: faculty.department,
-                designation: faculty.designation
-            };
-            
-            console.log('✅ Faculty login successful (legacy):', req.session.user);
-            
-            return res.json({
-                success: true,
-                message: 'Faculty login successful',
-                user: req.session.user,
-                redirectUrl: '/faculty-dashboard/'
-            });
+        // Check faculty table (fetch by code only, then verify password)
+        const { data: facultyRows, error: facultyError } = await req.supabase
+            .from('faculty')
+            .select('*')
+            .eq('faculty_code', username)
+            .eq('status', 'active');
+        if (facultyError) {
+            console.error('Faculty login error:', facultyError);
+            return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+        if (facultyRows && facultyRows.length > 0) {
+            const faculty = facultyRows[0];
+            let valid = false;
+            const stored = faculty.password || '';
+            if (stored.startsWith('$2')) {
+                try { valid = await bcrypt.compare(password, stored); } catch (_) { valid = false; }
+            } else {
+                // Legacy plain text fallback
+                if (stored === password) {
+                    valid = true;
+                    // Upgrade hash in background (best-effort)
+                    try {
+                        const newHash = await bcrypt.hash(password, 10);
+                        await req.supabase.from('faculty').update({ password: newHash }).eq('id', faculty.id);
+                    } catch (e) { console.warn('Legacy faculty password rehash failed:', e.message); }
+                }
+            }
+            if (valid) {
+                req.session.user = {
+                    id: faculty.id,
+                    username: faculty.faculty_code,
+                    name: `${faculty.first_name} ${faculty.last_name}`,
+                    type: 'faculty',
+                    department: faculty.department,
+                    designation: faculty.designation
+                };
+                console.log('✅ Faculty login successful:', req.session.user);
+                return res.json({
+                    success: true,
+                    message: 'Faculty login successful',
+                    user: req.session.user,
+                    redirectUrl: '/faculty-dashboard/'
+                });
+            }
         }
 
-        // Check students table for backward compatibility
-        console.log('🔍 Checking student credentials:', username, password);
-        const [studentResults] = await req.dbPool.execute(
-            'SELECT * FROM students WHERE register_number = ? AND password = ?',
-            [username, password]
-        );
-        
-        console.log('🔍 Student query results:', studentResults.length, 'records found');
+        // Check students table
+        console.log('🔍 Checking student credentials:', username);
+        const { data: studentRows, error: studentError } = await req.supabase
+            .from('students')
+            .select('*')
+            .eq('register_number', username);
 
-        if (studentResults.length > 0) {
-            const student = studentResults[0];
-            console.log('🔍 Student found:', student.first_name, student.last_name);
-            
-            // Set session
-            req.session.user = {
-                id: student.id,
-                username: student.register_number,
-                name: `${student.first_name} ${student.last_name}`,
-                type: 'student',
-                department: student.department,
-                semester: student.current_semester
-            };
-            
-            console.log('✅ Student login successful:', req.session.user);
-            
-            return res.json({
-                success: true,
-                message: 'Student login successful',
-                user: req.session.user,
-                redirectUrl: '/student-dashboard/'
-            });
+        if (studentError) {
+            console.error('Student login error:', studentError);
+            return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+        
+        console.log('🔍 Student query results:', studentRows ? studentRows.length : 0, 'records found');
+        if (studentRows && studentRows.length > 0) {
+            const student = studentRows[0];
+            let valid = false;
+            const stored = student.password || '';
+            if (stored.startsWith('$2')) {
+                try { valid = await bcrypt.compare(password, stored); } catch (_) { valid = false; }
+            } else if (stored === password) {
+                valid = true;
+                try {
+                    const newHash = await bcrypt.hash(password, 10);
+                    await req.supabase.from('students').update({ password: newHash }).eq('id', student.id);
+                } catch (e) { console.warn('Legacy student password rehash failed:', e.message); }
+            }
+            if (valid) {
+                req.session.user = {
+                    id: student.id,
+                    username: student.register_number,
+                    name: `${student.first_name} ${student.last_name}`,
+                    type: 'student',
+                    department: student.department,
+                    semester: student.current_semester
+                };
+                console.log('✅ Student login successful:', req.session.user);
+                return res.json({
+                    success: true,
+                    message: 'Student login successful',
+                    user: req.session.user,
+                    redirectUrl: '/student-dashboard/'
+                });
+            }
         }
 
         // No match found in any table
@@ -213,18 +243,22 @@ router.get('/api/debug/student/:registerNumber', async (req, res) => {
         const registerNumber = req.params.registerNumber;
         console.log('🔍 Checking if student exists:', registerNumber);
         
-        const [results] = await req.dbPool.execute(
-            'SELECT * FROM students WHERE register_number = ?',
-            [registerNumber]
-        );
+        const { data: results, error } = await req.supabase
+            .from('students')
+            .select('*')
+            .eq('register_number', registerNumber);
+
+        if (error) {
+            throw error;
+        }
         
-        console.log('🔍 Query results:', results.length, 'records found');
+        console.log('🔍 Query results:', results ? results.length : 0, 'records found');
         
         res.json({
             success: true,
-            exists: results.length > 0,
-            count: results.length,
-            student: results.length > 0 ? {
+            exists: results && results.length > 0,
+            count: results ? results.length : 0,
+            student: results && results.length > 0 ? {
                 id: results[0].id,
                 name: `${results[0].first_name} ${results[0].last_name}`,
                 register_number: results[0].register_number,

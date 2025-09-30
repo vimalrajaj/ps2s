@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "login/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "student_page/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "faculty_page/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "university_portal/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "certificate_verification/public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/login/index.html"
+    },
+    {
+      "src": "/login",
+      "dest": "/login/index.html"
+    },
+    {
+      "src": "/student-dashboard",
+      "dest": "/student_page/index.html"
+    },
+    {
+      "src": "/faculty-dashboard",
+      "dest": "/faculty_page/index.html"
+    },
+    {
+      "src": "/university-portal",
+      "dest": "/university_portal/index.html"
+    },
+    {
+      "src": "/certificate-verification",
+      "dest": "/certificate_verification/public/index.html"
+    }
+  ],
+  "env": {
+    "BACKEND_URL": "https://your-render-app.onrender.com"
+  }
+}

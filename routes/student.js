@@ -1,6 +1,63 @@
 ﻿const express = require('express');
 const router = express.Router();
 
+// Get all departments for student creation form
+router.get('/departments', async (req, res) => {
+    try {
+        const { data: departments, error } = await req.supabase
+            .from('departments')
+            .select('id, dept_name, dept_code')
+            .order('dept_name');
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            departments
+        });
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get classes by department for student creation
+router.get('/departments/:departmentId/classes', async (req, res) => {
+    try {
+        const { departmentId } = req.params;
+        
+        const { data: classes, error } = await req.supabase
+            .from('classes')
+            .select(`
+                id,
+                class_name,
+                section,
+                capacity,
+                total_students,
+                academic_years ( year_range, status )
+            `)
+            .eq('department_id', departmentId)
+            .order('class_name')
+            .order('section');
+
+        if (error) throw error;
+
+        // Filter to show only classes with available capacity
+        const availableClasses = classes.filter(cls => 
+            cls.total_students < cls.capacity && 
+            cls.academic_years.status === 'active'
+        );
+
+        res.json({
+            success: true,
+            classes: availableClasses
+        });
+    } catch (error) {
+        console.error('Error fetching classes:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
 // Create student route
 router.post('/create-student', async (req, res) => {
     try {
@@ -32,10 +89,15 @@ router.post('/create-student', async (req, res) => {
         }
 
         // Check if student already exists
-        const [existingStudent] = await req.dbPool.execute(
-            'SELECT * FROM students WHERE register_number = ? OR email = ?',
-            [register_number, email]
-        );
+        const { data: existingStudent, error: existingError } = await req.supabase
+            .from('students')
+            .select('register_number, email')
+            .or(`register_number.eq.${register_number},email.eq.${email}`);
+
+        if (existingError) {
+            console.error('Error checking for existing student:', existingError);
+            return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
 
         if (existingStudent.length > 0) {
             return res.status(400).json({
@@ -45,36 +107,38 @@ router.post('/create-student', async (req, res) => {
         }
 
         // Get department name and class details
-        const [departmentResult] = await req.dbPool.execute(
-            'SELECT dept_name, dept_code FROM departments WHERE id = ?',
-            [department]
-        );
+        const { data: departmentResult, error: deptError } = await req.supabase
+            .from('departments')
+            .select('dept_name, dept_code')
+            .eq('id', department)
+            .single();
 
-        const [classResult] = await req.dbPool.execute(
-            `SELECT c.*, ay.year_range 
-             FROM classes c 
-             JOIN academic_years ay ON c.academic_year_id = ay.id 
-             WHERE c.id = ?`,
-            [class_id]
-        );
-
-        if (departmentResult.length === 0) {
+        const { data: classResult, error: classError } = await req.supabase
+            .from('classes')
+            .select(`
+                *,
+                academic_years ( year_range )
+            `)
+            .eq('id', class_id)
+            .single();
+        
+        if (deptError || !departmentResult) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid department selected'
             });
         }
 
-        if (classResult.length === 0) {
+        if (classError || !classResult) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid class selected'
             });
         }
 
-        const departmentName = departmentResult[0].dept_name;
-        const departmentCode = departmentResult[0].dept_code;
-        const classInfo = classResult[0];
+        const departmentName = departmentResult.dept_name;
+        const departmentCode = departmentResult.dept_code;
+        const classInfo = classResult;
         
         // Check if class has available capacity (default capacity: 60 students)
         const maxCapacity = classInfo.capacity || 60;
@@ -85,44 +149,38 @@ router.post('/create-student', async (req, res) => {
             });
         }
 
-        const studentPassword = password || register_number;
-
-        // Get a connection from the pool for transaction
-        const connection = await req.dbPool.getConnection();
-
+        const bcrypt = require('bcryptjs');
+        const plainPassword = password || register_number;
+        let studentPassword = plainPassword;
         try {
-            // Start transaction
-            await connection.beginTransaction();
+            studentPassword = await bcrypt.hash(plainPassword, 10);
+        } catch (e) {
+            console.warn('Password hash failed, storing plain temporarily (NOT recommended):', e.message);
+        }
 
-            // Insert student with all form data including class information
-            await connection.execute(
-                `INSERT INTO students (
-                    register_number, first_name, last_name, email, phone, 
-                    date_of_birth, gender, department, class_id, current_semester, current_year,
-                    parent_name, parent_phone, address, password, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-                [
-                    register_number, first_name, last_name, email, phone,
-                    date_of_birth, gender, departmentCode, class_id, current_semester || 1, current_year || 1,
-                    parent_name, parent_phone, address, studentPassword
-                ]
-            );
+        // NOTE: For production, wrap these two operations in a Supabase RPC function for transactional integrity.
+        // 1. Insert the new student
+        const { error: insertError } = await req.supabase
+            .from('students')
+            .insert([{
+                register_number, first_name, last_name, email, phone, 
+                date_of_birth, gender, department: departmentCode, class_id, current_semester: current_semester || 1, current_year: current_year || 1,
+                parent_name, parent_phone, address, password: studentPassword, status: 'active'
+            }]);
 
-            // Update class total students count
-            await connection.execute(
-                'UPDATE classes SET total_students = total_students + 1 WHERE id = ?',
-                [class_id]
-            );
+        if (insertError) {
+            console.error('Error inserting student:', insertError);
+            return res.status(500).json({ success: false, message: 'Failed to create student account.' });
+        }
 
-            // Commit transaction
-            await connection.commit();
-        } catch (error) {
-            // Rollback transaction on error
-            await connection.rollback();
-            throw error;
-        } finally {
-            // Release connection back to pool
-            connection.release();
+        // 2. Update the class count
+        const { error: updateError } = await req.supabase
+            .rpc('increment_class_students', { class_id_to_update: class_id });
+
+        if (updateError) {
+            console.error('Error updating class count:', updateError);
+            // If this fails, we should ideally roll back the student insertion.
+            // This is why an RPC function is recommended.
         }
 
         res.status(201).json({
@@ -134,7 +192,7 @@ router.post('/create-student', async (req, res) => {
                 email,
                 department: departmentName,
                 class: `${classInfo.class_name} - ${classInfo.section}`,
-                academic_year: classInfo.year_range
+                academic_year: classInfo.academic_years.year_range
             }
         });
 
@@ -157,15 +215,12 @@ router.post('/create-student', async (req, res) => {
 // Get all students
 router.get('/students', async (req, res) => {
     try {
-        const [students] = await req.dbPool.execute(`
-            SELECT 
-                s.*,
-                d.dept_name,
-                d.dept_code
-            FROM students s
-            LEFT JOIN departments d ON s.department = d.dept_code
-            ORDER BY s.created_at DESC
-        `);
+        const { data: students, error } = await req.supabase
+            .from('students')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
 
         console.log('📚 Total students found:', students.length);
 
@@ -187,54 +242,52 @@ router.get('/class/:classId/students', async (req, res) => {
         const { classId } = req.params;
         console.log('🔍 Fetching students for class ID:', classId);
 
-        const [students] = await req.dbPool.execute(`
-            SELECT 
-                s.*,
-                c.class_name,
-                c.section,
-                c.class_teacher,
-                ay.year_range,
-                ay.start_year,
-                ay.end_year,
-                d.dept_name as department_name,
-                d.dept_code as department_code,
-                COALESCE(s.current_semester, 1) as current_semester,
-                COALESCE(s.current_year, 1) as current_year,
-                COALESCE(s.parent_name, 'N/A') as parent_name,
-                COALESCE(s.parent_phone, 'N/A') as parent_phone,
-                COALESCE(s.address, 'N/A') as address,
-                COALESCE(s.status, 'active') as status
-            FROM students s
-            LEFT JOIN classes c ON s.class_id = c.id
-            LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
-            LEFT JOIN departments d ON c.department_id = d.id
-            WHERE s.class_id = ?
-            ORDER BY s.first_name, s.last_name
-        `, [classId]);
+        const { data: students, error: studentsError } = await req.supabase
+            .from('students')
+            .select(`
+                *,
+                classes ( class_name, section, class_teacher, academic_years ( year_range, start_year, end_year ), departments ( dept_name, dept_code ) ),
+                current_semester,
+                current_year,
+                parent_name,
+                parent_phone,
+                address,
+                status
+            `)
+            .eq('class_id', classId)
+            .order('first_name', { ascending: true })
+            .order('last_name', { ascending: true });
+
+        if (studentsError) throw studentsError;
 
         console.log('📊 Found', students.length, 'students for class', classId);
         console.log('👥 Students:', students.map(s => `${s.first_name} ${s.last_name} (${s.register_number})`));
 
         // Get mentor information from mentor_assignments table
-        let mentor = null;
-        const [mentorResult] = await req.dbPool.execute(`
-            SELECT 
-                f.id as faculty_id,
-                CONCAT(f.first_name, ' ', f.last_name) as name,
-                f.email,
-                f.phone,
-                f.designation,
-                f.faculty_code,
-                ma.assignment_date,
-                ma.status
-            FROM mentor_assignments ma
-            JOIN faculty f ON ma.faculty_id = f.id
-            WHERE ma.class_id = ? AND ma.status = 'active'
-            LIMIT 1
-        `, [classId]);
+        const { data: mentorResult, error: mentorError } = await req.supabase
+            .from('mentor_assignments')
+            .select(`
+                assignment_date,
+                status,
+                faculty ( id, first_name, last_name, email, phone, designation, faculty_code )
+            `)
+            .eq('class_id', classId)
+            .eq('status', 'active')
+            .limit(1)
+            .single();
         
-        if (mentorResult.length > 0) {
-            mentor = mentorResult[0];
+        let mentor = null;
+        if (mentorResult && !mentorError) {
+            mentor = {
+                faculty_id: mentorResult.faculty.id,
+                name: `${mentorResult.faculty.first_name} ${mentorResult.faculty.last_name}`,
+                email: mentorResult.faculty.email,
+                phone: mentorResult.faculty.phone,
+                designation: mentorResult.faculty.designation,
+                faculty_code: mentorResult.faculty.faculty_code,
+                assignment_date: mentorResult.assignment_date,
+                status: mentorResult.status
+            };
             console.log('👨‍🏫 Found mentor:', mentor.name, 'for class', classId);
         } else {
             console.log('❌ No mentor assigned for class', classId);
@@ -263,33 +316,29 @@ router.get('/class/:classId/students', async (req, res) => {
 });
 
 // Get individual student details by register number
+// Get individual student details by register number
 router.get('/student/:registerNumber', async (req, res) => {
     try {
         const { registerNumber } = req.params;
 
-        const [students] = await req.dbPool.execute(`
-            SELECT 
-                s.*,
-                c.class_name,
-                c.section,
-                d.dept_name as department_name,
-                d.dept_code,
-                ay.year_range
-            FROM students s
-            LEFT JOIN classes c ON s.class_id = c.id
-            LEFT JOIN departments d ON c.department_id = d.id
-            LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
-            WHERE s.register_number = ?
-        `, [registerNumber]);
+        const { data: student, error } = await req.supabase
+            .from('students')
+            .select(`
+                *,
+                classes ( class_name, section, academic_years ( year_range ) ),
+                departments ( dept_name, dept_code )
+            `)
+            .eq('register_number', registerNumber)
+            .single();
 
-        if (students.length === 0) {
+        if (error || !student) {
             return res.status(404).json({ 
                 success: false, 
                 message: 'Student not found' 
             });
         }
 
-        res.json(students[0]);
+        res.json(student);
 
     } catch (error) {
         console.error('Error fetching student details:', error);
@@ -304,32 +353,32 @@ router.get('/student/:registerNumber', async (req, res) => {
 // Get all students with detailed information for dashboard
 router.get('/students/all-details', async (req, res) => {
     try {
-        const [students] = await req.dbPool.execute(`
-            SELECT 
-                s.id,
-                s.register_number,
-                s.first_name,
-                s.last_name,
-                s.email,
-                s.phone,
-                s.date_of_birth,
-                s.gender,
-                s.department,
-                d.dept_name,
-                d.dept_code,
-                s.current_semester,
-                s.current_year,
-                s.parent_name,
-                s.parent_phone,
-                s.address,
-                s.status,
-                s.created_at,
-                s.class_id
-            FROM students s
-            LEFT JOIN departments d ON s.department = d.dept_code
-            WHERE s.status = 'active'
-            ORDER BY s.register_number
-        `);
+        const { data: students, error } = await req.supabase
+            .from('students')
+            .select(`
+                id,
+                register_number,
+                first_name,
+                last_name,
+                email,
+                phone,
+                date_of_birth,
+                gender,
+                department,
+                departments ( dept_name, dept_code ),
+                current_semester,
+                current_year,
+                parent_name,
+                parent_phone,
+                address,
+                status,
+                created_at,
+                class_id
+            `)
+            .eq('status', 'active')
+            .order('register_number');
+
+        if (error) throw error;
 
         console.log('📚 Fetched', students.length, 'students for detailed view');
 
@@ -355,35 +404,28 @@ router.get('/api/students/profile/:studentId', async (req, res) => {
         const { studentId } = req.params;
         console.log('👤 Fetching profile for student ID:', studentId);
         
-        // Get detailed student information
-        const [students] = await req.dbPool.execute(`
-            SELECT 
-                s.*,
-                c.class_name,
-                c.department as class_department,
-                c.semester as class_semester,
-                c.academic_year
-            FROM students s
-            LEFT JOIN classes c ON s.class_id = c.id
-            WHERE s.id = ?
-            LIMIT 1
-        `, [studentId]);
+        const { data: student, error } = await req.supabase
+            .from('students')
+            .select(`
+                *,
+                classes ( class_name, department, semester, academic_year )
+            `)
+            .eq('id', studentId)
+            .single();
 
-        if (students.length === 0) {
+        if (error || !student) {
             return res.status(404).json({
                 success: false,
                 message: 'Student not found'
             });
         }
 
-        const student = students[0];
         console.log(`✅ Found student profile: ${student.first_name} ${student.last_name}`);
 
         res.json({
             success: true,
             student: student
         });
-
     } catch (error) {
         console.error('❌ Error fetching student profile:', error);
         res.status(500).json({

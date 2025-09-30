@@ -8,8 +8,8 @@ const Tesseract = require('tesseract.js');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
-const mysql = require('mysql2/promise');
 const session = require('express-session');
+const { supabase, supabaseAdmin } = require('./supabase');
 
 // Load environment variables
 require('dotenv').config();
@@ -17,34 +17,23 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database configuration
-const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASS || 'Asiajnas@63831',
-    database: process.env.DB_NAME || 'university_management',
-    port: process.env.DB_PORT || 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-};
-
-// Create database connection pool
-const dbPool = mysql.createPool(dbConfig);
-
-// Basic database connection test
-async function testDatabaseConnection() {
-    try {
-        const connection = await dbPool.getConnection();
-        console.log('✅ Database connected successfully!');
-        connection.release();
-    } catch (error) {
-        console.error('❌ Database connection failed:', error.message);
+// Test Supabase connection (probe a known table; fallback sequence)
+async function testSupabaseConnection() {
+    const probeTables = ['departments','faculty','students','classes'];
+    for (const tbl of probeTables) {
+        try {
+            const { error } = await supabase.from(tbl).select('id').limit(1);
+            if (!error) {
+                console.log(`✅ Supabase connection OK (probed table: ${tbl})`);
+                return;
+            }
+        } catch (_) { /* ignore and try next */ }
     }
+    console.error('❌ Supabase connection probe failed: none of the probe tables responded. Check schema or credentials.');
 }
 
-// Test database connection on startup
-testDatabaseConnection();
+// Test connection on startup
+testSupabaseConnection();
 
 // Session configuration
 app.use(session({
@@ -139,31 +128,36 @@ const facultyRoutes = require('./routes/faculty');
 const departmentRoutes = require('./routes/department');
 const subjectRoutes = require('./routes/subjects');
 
-// Use routes with database connection
+// Use routes with Supabase connection
 app.use('/', (req, res, next) => {
-    req.dbPool = dbPool;
+    req.supabase = supabase;
+    req.supabaseAdmin = supabaseAdmin;
     next();
 }, authRoutes);
 
 app.use('/api', (req, res, next) => {
-    req.dbPool = dbPool;
+    req.supabase = supabase;
+    req.supabaseAdmin = supabaseAdmin;
     next();
 }, studentRoutes);
 
 // Faculty routes with Excel upload middleware for specific route
 app.use('/api/faculty/upload-marks', excelUploadMiddleware);
 app.use('/api', (req, res, next) => {
-    req.dbPool = dbPool;
+    req.supabase = supabase;
+    req.supabaseAdmin = supabaseAdmin;
     next();
 }, facultyRoutes);
 
 app.use('/api', (req, res, next) => {
-    req.dbPool = dbPool;
+    req.supabase = supabase;
+    req.supabaseAdmin = supabaseAdmin;
     next();
 }, departmentRoutes);
 
 app.use('/api', (req, res, next) => {
-    req.dbPool = dbPool;
+    req.supabase = supabase;
+    req.supabaseAdmin = supabaseAdmin;
     next();
 }, subjectRoutes);
 
@@ -265,4 +259,4 @@ app.listen(PORT, () => {
 });
 
 // Export for testing
-module.exports = { app, dbPool };
+module.exports = { app, supabase };
