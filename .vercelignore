@@ -10,3 +10,6 @@ uploads/
 temp/
 certificate_verification/
 sample_marks_upload.*
+backend/
+render.yaml
+*.md
