@@ -1,54 +1,36 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "login/**",
-      "use": "@vercel/static"
+      "source": "/",
+      "destination": "/login/index.html"
     },
     {
-      "src": "student_page/**",
-      "use": "@vercel/static"
+      "source": "/login",
+      "destination": "/login/index.html"
     },
     {
-      "src": "faculty_page/**",
-      "use": "@vercel/static"
+      "source": "/student-dashboard",
+      "destination": "/student_page/index.html"
     },
     {
-      "src": "university_portal/**",
-      "use": "@vercel/static"
+      "source": "/student-page",
+      "destination": "/student_page/index.html"
     },
     {
-      "src": "certificate_verification/public/**",
-      "use": "@vercel/static"
+      "source": "/faculty-dashboard",
+      "destination": "/faculty_page/index.html"
+    },
+    {
+      "source": "/faculty-page",
+      "destination": "/faculty_page/index.html"
+    },
+    {
+      "source": "/university-portal",
+      "destination": "/university_portal/index.html"
+    },
+    {
+      "source": "/certificate-verification",
+      "destination": "/certificate_verification/public/index.html"
     }
-  ],
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/login/index.html"
-    },
-    {
-      "src": "/login",
-      "dest": "/login/index.html"
-    },
-    {
-      "src": "/student-dashboard",
-      "dest": "/student_page/index.html"
-    },
-    {
-      "src": "/faculty-dashboard",
-      "dest": "/faculty_page/index.html"
-    },
-    {
-      "src": "/university-portal",
-      "dest": "/university_portal/index.html"
-    },
-    {
-      "src": "/certificate-verification",
-      "dest": "/certificate_verification/public/index.html"
-    }
-  ],
-  "env": {
-    "BACKEND_URL": "https://ps2s.onrender.com"
-  }
+  ]
 }

@@ -579,7 +579,13 @@
         </div>
     </div>
 
+    <script src="../config.js"></script>
     <script>
+        // API Configuration
+        const API_BASE_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000' 
+            : 'https://ps2s.onrender.com';
+            
         // Direct access login system - no form elements needed
 
         // Initialize
@@ -603,7 +609,7 @@
 
                 const credentials = defaultCredentials[userType];
 
-                const response = await fetch('/login', {
+                const response = await fetch(`${API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -657,7 +663,7 @@
         // Check for existing session
         async function checkExistingSession() {
             try {
-                const response = await fetch('/check-session');
+                const response = await fetch(`${API_BASE_URL}/check-session`);
                 const data = await response.json();
                 
                 if (data.authenticated) {
